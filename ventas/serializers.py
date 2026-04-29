@@ -3,9 +3,10 @@ from .models import Venta
 
 
 class VentaSerializer(serializers.ModelSerializer):
-    cliente_nombre  = serializers.CharField(source='cliente.nombre',   read_only=True)
-    producto_nombre = serializers.CharField(source='producto.nombre',  read_only=True)
-    producto_codigo = serializers.CharField(source='producto.codigo',  read_only=True)
+    cliente_nombre    = serializers.CharField(source='cliente.nombre',   read_only=True)
+    producto_nombre   = serializers.CharField(source='producto.nombre',  read_only=True)
+    producto_codigo   = serializers.CharField(source='producto.codigo',  read_only=True)
+    bodega_nombre     = serializers.CharField(source='bodega.nombre',    read_only=True)
     creado_por_nombre = serializers.CharField(source='creado_por.nombre', read_only=True)
 
     class Meta:

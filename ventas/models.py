@@ -13,6 +13,13 @@ class Venta(models.Model):
 
     cliente          = models.ForeignKey(Cliente,  on_delete=models.PROTECT, related_name='ventas')
     producto         = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='ventas')
+    # Bodega desde la que sale el producto (opcional — si no se elige, solo descuenta stock global)
+    bodega           = models.ForeignKey(
+                           'bodegas.Bodega',
+                           on_delete=models.SET_NULL,
+                           null=True, blank=True,
+                           related_name='ventas'
+                       )
     cantidad         = models.PositiveIntegerField()
     precio_unitario  = models.DecimalField(max_digits=14, decimal_places=2)
     total            = models.DecimalField(max_digits=16, decimal_places=2, editable=False)

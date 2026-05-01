@@ -1,27 +1,50 @@
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt.views import TokenRefreshView
+from django.conf import settings
+from django.conf.urls.static import static
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Auth
-    path('api/auth/login/',   include('users.urls_auth')),
-    path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/auth/me/',      include('users.urls_me')),
-    # Módulos originales
-    path('api/usuarios/',    include('users.urls')),
-    path('api/productos/',   include('productos.urls')),
-    path('api/clientes/',    include('clientes.urls')),
-    path('api/proveedores/', include('proveedores.urls')),
-    path('api/ventas/',      include('ventas.urls')),
-    path('api/compras/',     include('compras.urls')),
-    path('api/entregas/',    include('entregas.urls')),
-    path('api/movimientos/', include('movimientos.urls')),
-    path('api/kardex/',      include('kardex.urls')),
-    path('api/reportes/',    include('reportes.urls')),
-    # Nuevos módulos
-    path('api/bodegas/',     include('bodegas.urls')),
-    path('api/cxc/',         include('cxc.urls')),
-    path('api/cxp/',         include('cxp.urls')),
-    path('api/nomina/',      include('nomina.urls')),
+
+    path('api/', include([
+        # ── Auth JWT ──────────────────────────────────────────────
+        path('auth/login/',   TokenObtainPairView.as_view(),  name='token_obtain'),
+        path('auth/refresh/', TokenRefreshView.as_view(),     name='token_refresh'),
+
+        # ── Users y Sedes ─────────────────────────────────────────
+        path('', include('users.urls')),
+
+        # ── Configuración empresa y tarifas ───────────────────────
+        path('', include('configuracion.urls')),
+
+        # ── Clientes y Proveedores ────────────────────────────────
+        path('', include('clientes.urls')),
+        path('', include('proveedores.urls')),
+
+        # ── Inventario ────────────────────────────────────────────
+        path('', include('productos.urls')),
+        path('', include('bodegas.urls')),
+        path('', include('movimientos.urls')),
+        path('', include('kardex.urls')),
+
+        # ── Ventas y Facturas ─────────────────────────────────────
+        path('', include('ventas.urls')),
+        path('', include('compras.urls')),
+        path('', include('entregas.urls')),
+
+        # ── Finanzas ──────────────────────────────────────────────
+        path('', include('cxc.urls')),
+        path('', include('cxp.urls')),
+
+        # ── RRHH ──────────────────────────────────────────────────
+        path('', include('nomina.urls')),
+
+        # ── Reportes ──────────────────────────────────────────────
+        path('', include('reportes.urls')),
+    ])),
 ]
+
+# Servir archivos de media en desarrollo
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

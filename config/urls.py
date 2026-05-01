@@ -19,29 +19,29 @@ urlpatterns = [
         path('', include('configuracion.urls')),
 
         # ── Clientes y Proveedores ────────────────────────────────
-        path('', include('clientes.urls')),
-        path('', include('proveedores.urls')),
+        path('clientes/', include('clientes.urls')),
+        path('proveedores/', include('proveedores.urls')),
 
         # ── Inventario ────────────────────────────────────────────
-        path('', include('productos.urls')),
-        path('', include('bodegas.urls')),
-        path('', include('movimientos.urls')),
-        path('', include('kardex.urls')),
+        path('productos/', include('productos.urls')),
+        path('bodegas/', include('bodegas.urls')),
+        path('movimientos/', include('movimientos.urls')),
+        path('kardex/', include('kardex.urls')),
 
         # ── Ventas y Facturas ─────────────────────────────────────
-        path('', include('ventas.urls')),
-        path('', include('compras.urls')),
-        path('', include('entregas.urls')),
+        path('ventas/', include('ventas.urls')),
+        path('compras/', include('compras.urls')),
+        path('entregas/', include('entregas.urls')),
 
         # ── Finanzas ──────────────────────────────────────────────
-        path('', include('cxc.urls')),
-        path('', include('cxp.urls')),
+        path('cxc/', include('cxc.urls')),
+        path('cxp/', include('cxp.urls')),
 
         # ── RRHH ──────────────────────────────────────────────────
-        path('', include('nomina.urls')),
+        path('nomina/', include('nomina.urls')),
 
         # ── Reportes ──────────────────────────────────────────────
-        path('', include('reportes.urls')),
+        path('reportes/', include('reportes.urls')),
     ])),
 ]
 

@@ -40,6 +40,18 @@ class ProductoDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = ProductoSerializer
     permission_classes = [IsAdminOrReadOnly]
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except Exception as e:
+            from django.db.models import ProtectedError
+            if isinstance(e, ProtectedError):
+                return Response(
+                    {"error": "No se puede eliminar el producto porque tiene ventas o movimientos asociados. Te sugerimos cambiar su estado a 'Inactivo'."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class ProductoStockBodegasView(APIView):
     """

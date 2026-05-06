@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from proveedores.models import Proveedor
 from compras.models import Compra
 from users.models import Usuario
@@ -13,19 +14,21 @@ class CuentaPorPagar(models.Model):
         ('Anulada',   'Anulada'),
     ]
 
-    proveedor      = models.ForeignKey(Proveedor, on_delete=models.PROTECT, related_name='cxp')
-    compra         = models.OneToOneField(Compra, on_delete=models.SET_NULL, null=True, blank=True, related_name='cxp')
-    concepto       = models.CharField(max_length=255)
-    monto_total    = models.DecimalField(max_digits=16, decimal_places=2)
-    monto_pagado   = models.DecimalField(max_digits=16, decimal_places=2, default=0)
-    saldo          = models.DecimalField(max_digits=16, decimal_places=2, editable=False)
-    fecha_emision  = models.DateField(auto_now_add=True)
+    proveedor         = models.ForeignKey(Proveedor, on_delete=models.PROTECT, related_name='cxp')
+    compra            = models.OneToOneField(Compra, on_delete=models.SET_NULL,
+                            null=True, blank=True, related_name='cxp')
+    concepto          = models.CharField(max_length=255)
+    monto_total       = models.DecimalField(max_digits=16, decimal_places=2)
+    monto_pagado      = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    saldo             = models.DecimalField(max_digits=16, decimal_places=2, editable=False)
+    fecha_emision     = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField()
-    estado         = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='Pendiente')
-    notas          = models.TextField(blank=True)
-    creado_por     = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, related_name='cxp_creadas')
-    creado_en      = models.DateTimeField(auto_now_add=True)
-    actualizado_en = models.DateTimeField(auto_now=True)
+    estado            = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='Pendiente')
+    notas             = models.TextField(blank=True)
+    creado_por        = models.ForeignKey(Usuario, on_delete=models.SET_NULL,
+                            null=True, related_name='cxp_creadas')
+    creado_en         = models.DateTimeField(auto_now_add=True)
+    actualizado_en    = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table   = 'cuentas_por_pagar'
@@ -34,14 +37,36 @@ class CuentaPorPagar(models.Model):
 
     def save(self, *args, **kwargs):
         self.saldo = self.monto_total - self.monto_pagado
-        if self.saldo <= 0:
-            self.estado = 'Pagada'
-        elif self.monto_pagado > 0:
-            self.estado = 'Parcial'
+        if self.estado != 'Anulada':
+            if self.saldo <= 0:
+                self.estado = 'Pagada'
+            elif self.monto_pagado > 0:
+                self.estado = 'Parcial'
+            elif self.fecha_vencimiento and self.fecha_vencimiento < timezone.now().date():
+                self.estado = 'Vencida'
+            else:
+                self.estado = 'Pendiente'
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'CXP-{self.id:04d} | {self.proveedor.empresa} | {self.estado}'
+        # ✅ Fix: usa razon_social en lugar de empresa
+        return f'CXP-{self.id:04d} | {self.proveedor.razon_social} | {self.estado}'
+
+    @property
+    def dias_vencimiento(self):
+        delta = self.fecha_vencimiento - timezone.now().date()
+        return delta.days
+
+    @property
+    def alerta_vencimiento(self):
+        dias = self.dias_vencimiento
+        if self.estado in ('Pagada', 'Anulada'):
+            return None
+        if dias < 0:
+            return 'vencida'
+        if dias <= 7:
+            return 'proxima'
+        return None
 
 
 class PagoCXP(models.Model):
@@ -70,3 +95,6 @@ class PagoCXP(models.Model):
         total = self.cxp.pagos.aggregate(t=Sum('monto'))['t'] or 0
         self.cxp.monto_pagado = total
         self.cxp.save()
+
+    def __str__(self):
+        return f'Pago CXP-{self.cxp_id:04d} | ${self.monto}'

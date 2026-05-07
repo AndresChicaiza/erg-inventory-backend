@@ -34,4 +34,5 @@ class Compra(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'OC-{self.id:04d} | {self.proveedor.empresa}'
+        # ✅ Fix: razon_social en lugar de empresa
+        return f'OC-{self.id:04d} | {self.proveedor.razon_social}'

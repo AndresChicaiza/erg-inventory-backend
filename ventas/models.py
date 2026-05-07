@@ -13,7 +13,6 @@ class Venta(models.Model):
 
     cliente          = models.ForeignKey(Cliente,  on_delete=models.PROTECT, related_name='ventas')
     producto         = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='ventas')
-    # Bodega desde la que sale el producto (opcional — si no se elige, solo descuenta stock global)
     bodega           = models.ForeignKey(
                            'bodegas.Bodega',
                            on_delete=models.SET_NULL,
@@ -41,4 +40,5 @@ class Venta(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'V-{self.id:04d} | {self.cliente.nombre}'
+        # ✅ Fix: razon_social en lugar de nombre
+        return f'V-{self.id:04d} | {self.cliente.razon_social}'

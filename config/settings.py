@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     # Apps propias
     'core',
     'users',
-    'configuracion',      # ← NUEVA
+    'configuracion',
     'productos',
     'clientes',
     'proveedores',
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'cxc',
     'cxp',
     'nomina',
+    'facturacion',      # ← NUEVA
 ]
 
 MIDDLEWARE = [
@@ -94,7 +95,6 @@ STATIC_URL          = '/static/'
 STATIC_ROOT         = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ── Archivos de media (logos, imágenes) ──────────────────────────────────────
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -123,11 +123,8 @@ CORS_ALLOWED_ORIGINS = os.getenv(
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
-# ── Email — configurado en consola por ahora (sin envío real) ────────────────
-# Cuando estés listo para activar Gmail, cambia esto por la config de SMTP.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# ── Información del sistema ───────────────────────────────────────────────────
 SYSTEM_NAME    = 'ERG Inventory'
 SYSTEM_VERSION = '2.0'
 COMPANY_NAME   = 'SUMINISTROS DACAR S.A.S.'

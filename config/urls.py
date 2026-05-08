@@ -19,29 +19,32 @@ urlpatterns = [
         path('', include('configuracion.urls')),
 
         # ── Clientes y Proveedores ────────────────────────────────
-        path('clientes/', include('clientes.urls')),
+        path('clientes/',    include('clientes.urls')),
         path('proveedores/', include('proveedores.urls')),
 
         # ── Inventario ────────────────────────────────────────────
-        path('productos/', include('productos.urls')),
-        path('bodegas/', include('bodegas.urls')),
+        path('productos/',   include('productos.urls')),
+        path('bodegas/',     include('bodegas.urls')),
         path('movimientos/', include('movimientos.urls')),
-        path('kardex/', include('kardex.urls')),
+        path('kardex/',      include('kardex.urls')),
 
-        # ── Ventas y Facturas ─────────────────────────────────────
-        path('ventas/', include('ventas.urls')),
-        path('compras/', include('compras.urls')),
-        path('entregas/', include('entregas.urls')),
+        # ── Ventas ───────────────────────────────────────────────
+        path('ventas/',      include('ventas.urls')),
+        path('compras/',     include('compras.urls')),
+        path('entregas/',    include('entregas.urls')),
+
+        # ── Facturación electrónica ← NUEVA ──────────────────────
+        path('', include('facturacion.urls')),
 
         # ── Finanzas ──────────────────────────────────────────────
-        path('cxc/', include('cxc.urls')),
-        path('cxp/', include('cxp.urls')),
+        path('cxc/',         include('cxc.urls')),
+        path('cxp/',         include('cxp.urls')),
 
         # ── RRHH ──────────────────────────────────────────────────
-        path('nomina/', include('nomina.urls')),
+        path('nomina/',      include('nomina.urls')),
 
         # ── Reportes ──────────────────────────────────────────────
-        path('reportes/', include('reportes.urls')),
+        path('reportes/',    include('reportes.urls')),
     ])),
 ]
 

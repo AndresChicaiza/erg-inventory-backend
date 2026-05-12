@@ -3,7 +3,9 @@ from .models import Producto
 
 
 class ProductoSerializer(serializers.ModelSerializer):
-    estado_stock = serializers.ReadOnlyField()
+    estado_stock      = serializers.ReadOnlyField()
+    precio_sin_iva    = serializers.ReadOnlyField()
+    valor_iva_unitario= serializers.ReadOnlyField()
 
     class Meta:
         model  = Producto
@@ -12,7 +14,15 @@ class ProductoSerializer(serializers.ModelSerializer):
 
 
 class ProductoMiniSerializer(serializers.ModelSerializer):
-    """Versión compacta para usar en relaciones."""
+    """Serializer liviano para selectores en factura."""
+    precio_sin_iva    = serializers.ReadOnlyField()
+    valor_iva_unitario= serializers.ReadOnlyField()
+
     class Meta:
         model  = Producto
-        fields = ('id', 'codigo', 'nombre', 'precio_venta', 'precio_costo', 'stock')
+        fields = (
+            'id', 'codigo', 'nombre', 'categoria',
+            'precio_venta', 'precio_sin_iva', 'valor_iva_unitario',
+            'iva_tipo', 'iva_incluido', 'unidad_medida',
+            'stock', 'estado',
+        )

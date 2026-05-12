@@ -52,7 +52,7 @@ class Factura(models.Model):
     cliente          = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='facturas')
 
     # ── Fechas ───────────────────────────────────────────────────
-    fecha_emision    = models.DateField(default=timezone.now)
+    fecha_emision    = models.DateField(default=timezone.localdate)
     fecha_vencimiento= models.DateField(null=True, blank=True)
 
     # ── Condiciones ──────────────────────────────────────────────
@@ -134,6 +134,11 @@ class Factura(models.Model):
                 'Contado': 0, '15_dias': 15,
                 '30_dias': 30, '60_dias': 60, '90_dias': 90,
             }.get(self.condicion_pago, 0)
+            
+            import datetime
+            if isinstance(self.fecha_emision, datetime.datetime):
+                self.fecha_emision = self.fecha_emision.date()
+                
             self.fecha_vencimiento = self.fecha_emision + timezone.timedelta(days=dias)
 
         super().save(*args, **kwargs)

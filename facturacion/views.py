@@ -130,7 +130,11 @@ class EmitirFacturaView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        factura.estado          = 'Emitida'
+        if factura.condicion_pago == 'Contado':
+            factura.estado = 'Pagada'
+        else:
+            factura.estado = 'Emitida'
+
         factura.emitida_por     = request.user
         factura.fecha_emision_ts = timezone.now()
 
@@ -204,6 +208,25 @@ class AnularFacturaView(APIView):
         factura.save(update_fields=['estado', 'notas'])
 
         return Response({'mensaje': 'Factura anulada correctamente'})
+
+
+class MarcarFacturaPagadaView(APIView):
+    """POST /api/facturas/<id>/pagar/"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            factura = Factura.objects.get(pk=pk)
+        except Factura.DoesNotExist:
+            return Response({'error': 'Factura no encontrada'}, status=404)
+
+        if factura.estado not in ['Emitida', 'Vencida']:
+            return Response({'error': f'Solo se pueden pagar facturas Emitidas o Vencidas. Estado actual: {factura.estado}'}, status=400)
+
+        factura.estado = 'Pagada'
+        factura.save(update_fields=['estado'])
+
+        return Response({'mensaje': 'Factura marcada como pagada correctamente'})
 
 
 class CalcularImpuestosView(APIView):

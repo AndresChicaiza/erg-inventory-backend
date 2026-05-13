@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     FacturaListCreateView, FacturaDetailView,
     DetalleFacturaListCreateView, DetalleFacturaDetailView,
-    EmitirFacturaView, AnularFacturaView,
+    EmitirFacturaView, AnularFacturaView, MarcarFacturaPagadaView,
     CalcularImpuestosView, FacturaPDFView,
     ResumenFacturacionView,
     NotaCreditoListCreateView,
@@ -16,6 +16,7 @@ urlpatterns = [
     path('facturas/<int:pk>/',                 FacturaDetailView.as_view(),            name='factura-detail'),
     path('facturas/<int:pk>/emitir/',          EmitirFacturaView.as_view(),            name='factura-emitir'),
     path('facturas/<int:pk>/anular/',          AnularFacturaView.as_view(),            name='factura-anular'),
+    path('facturas/<int:pk>/pagar/',           MarcarFacturaPagadaView.as_view(),      name='factura-pagar'),
     path('facturas/<int:pk>/pdf/',             FacturaPDFView.as_view(),               name='factura-pdf'),
 
     # Detalles (ítems) de factura

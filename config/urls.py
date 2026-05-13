@@ -28,8 +28,7 @@ urlpatterns = [
         path('movimientos/', include('movimientos.urls')),
         path('kardex/',      include('kardex.urls')),
 
-        # ── Ventas ───────────────────────────────────────────────
-        path('ventas/',      include('ventas.urls')),
+        # ── Compras y Entregas ───────────────────────────────────
         path('compras/',     include('compras.urls')),
         path('entregas/',    include('entregas.urls')),
 
@@ -42,6 +41,9 @@ urlpatterns = [
 
         # ── RRHH ──────────────────────────────────────────────────
         path('nomina/',      include('nomina.urls')),
+
+        # ── Producción ────────────────────────────────────────────
+        path('produccion/',  include('produccion.urls')),
 
         # ── Reportes ──────────────────────────────────────────────
         path('reportes/',    include('reportes.urls')),

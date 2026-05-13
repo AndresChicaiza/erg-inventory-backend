@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     'productos',
     'clientes',
     'proveedores',
-    'ventas',
     'compras',
     'entregas',
     'movimientos',
@@ -40,7 +39,8 @@ INSTALLED_APPS = [
     'cxc',
     'cxp',
     'nomina',
-    'facturacion',      # ← NUEVA
+    'facturacion',
+    'produccion',       # ← NUEVA
 ]
 
 MIDDLEWARE = [

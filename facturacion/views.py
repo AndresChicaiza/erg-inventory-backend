@@ -150,12 +150,22 @@ class EmitirFacturaView(APIView):
                 producto = detalle.producto
                 cantidad = detalle.cantidad
 
+                from produccion.models import OrdenProduccion
+                necesita_produccion = False
+                cantidad_a_producir = 0
+
                 # 1. Validar y descontar stock global
                 if producto.stock < cantidad:
-                    return Response(
-                        {'error': f'Stock global insuficiente para el producto "{producto.nombre}". Disponible: {producto.stock}'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    if producto.tipo_inventario == 'TERMINADO' and hasattr(producto, 'receta'):
+                        necesita_produccion = True
+                        # Producir solo lo que falta (o todo si stock es <= 0)
+                        stock_actual = producto.stock if producto.stock > 0 else 0
+                        cantidad_a_producir = cantidad - stock_actual
+                    else:
+                        return Response(
+                            {'error': f'Stock global insuficiente para el producto "{producto.nombre}". Disponible: {producto.stock}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
                 producto.stock -= cantidad
                 producto.save(update_fields=['stock'])
 
@@ -166,13 +176,37 @@ class EmitirFacturaView(APIView):
                 ).first()
 
                 if not sb or sb.cantidad < cantidad:
-                    disponible = sb.cantidad if sb else 0
-                    return Response(
-                        {'error': f'Stock insuficiente en bodega "{factura.bodega.nombre}" para el producto "{producto.nombre}". Disponible: {disponible}'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    if necesita_produccion:
+                        if not sb:
+                            sb = StockBodega.objects.create(bodega_id=factura.bodega_id, producto=producto, cantidad=0)
+                    else:
+                        disponible = sb.cantidad if sb else 0
+                        return Response(
+                            {'error': f'Stock insuficiente en bodega "{factura.bodega.nombre}" para el producto "{producto.nombre}". Disponible: {disponible}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
                 sb.cantidad -= cantidad
                 sb.save()
+
+                # Generar orden de producción si aplica
+                if necesita_produccion:
+                    orden = OrdenProduccion.objects.create(
+                        receta=producto.receta,
+                        cantidad_a_fabricar=cantidad_a_producir,
+                        bodega_id=factura.bodega_id,
+                        factura_vinculada=factura,
+                        creado_por=request.user
+                    )
+                    # Autogenerar consumos esperados
+                    from produccion.models import ConsumoProduccion
+                    for ingrediente in orden.receta.ingredientes.all():
+                        c_esperada = ingrediente.cantidad_esperada * orden.cantidad_a_fabricar
+                        ConsumoProduccion.objects.create(
+                            orden=orden,
+                            producto_materia=ingrediente.producto_materia,
+                            cantidad_esperada=c_esperada,
+                            cantidad_real=c_esperada
+                        )
 
                 # 3. Registrar movimiento de salida
                 Movimiento.objects.create(
@@ -185,6 +219,18 @@ class EmitirFacturaView(APIView):
                 )
 
         factura.save(update_fields=['estado', 'emitida_por', 'fecha_emision_ts'])
+
+        # ── Crear Cuenta por Cobrar si es a crédito ──
+        if factura.condicion_pago != 'Contado':
+            from cxc.models import CuentaPorCobrar
+            CuentaPorCobrar.objects.create(
+                cliente=factura.cliente,
+                factura=factura,
+                concepto=f'Factura {factura.numero_completo} - {factura.condicion_pago.replace("_dias", " días")}',
+                monto_total=factura.total_a_pagar,
+                fecha_vencimiento=factura.fecha_vencimiento,
+                creado_por=request.user
+            )
 
         return Response(FacturaSerializer(factura).data)
 

@@ -1,7 +1,6 @@
 from django.db import models
 from django.utils import timezone
 from clientes.models import Cliente
-from ventas.models import Venta
 from users.models import Usuario
 
 
@@ -15,7 +14,7 @@ class CuentaPorCobrar(models.Model):
     ]
 
     cliente           = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='cxc')
-    venta             = models.OneToOneField(Venta, on_delete=models.SET_NULL,
+    factura           = models.OneToOneField('facturacion.Factura', on_delete=models.SET_NULL,
                             null=True, blank=True, related_name='cxc')
     concepto          = models.CharField(max_length=255)
     monto_total       = models.DecimalField(max_digits=16, decimal_places=2)
@@ -39,6 +38,8 @@ class CuentaPorCobrar(models.Model):
         self.saldo = self.monto_total - self.monto_pagado
         # No tocar si está anulada
         if self.estado != 'Anulada':
+            estado_anterior = getattr(self, '_estado_anterior', None)
+            
             if self.saldo <= 0:
                 self.estado = 'Pagada'
             elif self.monto_pagado > 0:
@@ -47,6 +48,12 @@ class CuentaPorCobrar(models.Model):
                 self.estado = 'Vencida'
             else:
                 self.estado = 'Pendiente'
+                
+            # Si el estado cambió a Pagada, marcar la factura relacionada como Pagada
+            if self.estado == 'Pagada' and self.factura and self.factura.estado != 'Pagada':
+                self.factura.estado = 'Pagada'
+                self.factura.save(update_fields=['estado'])
+                
         super().save(*args, **kwargs)
 
     def __str__(self):

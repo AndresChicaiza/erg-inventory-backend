@@ -11,7 +11,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('ventas', '0001_initial'),
         ('clientes', '0001_initial'),
     ]
 
@@ -32,7 +31,6 @@ class Migration(migrations.Migration):
                 ('actualizado_en', models.DateTimeField(auto_now=True)),
                 ('cliente', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='cxc', to='clientes.cliente')),
                 ('creado_por', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='cxc_creadas', to=settings.AUTH_USER_MODEL)),
-                ('venta', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='cxc', to='ventas.venta')),
             ],
             options={
                 'verbose_name': 'Cuenta por Cobrar',

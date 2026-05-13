@@ -48,8 +48,16 @@ class Factura(models.Model):
     prefijo          = models.CharField(max_length=10, default='FACT')
     numero_completo  = models.CharField(max_length=20, unique=True, editable=False)
 
-    # ── Cliente ──────────────────────────────────────────────────
+    # ── Datos Generales ──────────────────────────────────────────
     cliente          = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='facturas')
+    vendedor         = models.ForeignKey(
+                           Usuario, on_delete=models.PROTECT, related_name='facturas_vendedor',
+                           null=True, blank=True
+                       )
+    bodega           = models.ForeignKey(
+                           'bodegas.Bodega', on_delete=models.PROTECT, related_name='facturas',
+                           null=True, blank=True
+                       )
 
     # ── Fechas ───────────────────────────────────────────────────
     fecha_emision    = models.DateField(default=timezone.localdate)

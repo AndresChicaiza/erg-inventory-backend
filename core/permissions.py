@@ -82,9 +82,9 @@ class CanCreateVenta(BasePermission):
 
 
 class CanEmitirFactura(BasePermission):
-    """Solo Admin y Contador emiten facturas."""
+    """Admin, Contador y Vendedor emiten facturas."""
     def has_permission(self, request, view):
-        return _rol(request, *ADMIN_CONTA)
+        return _rol(request, *ADMIN_CONTA_VEND)
 
 
 # ── Órdenes de Compra ────────────────────────────────────────────────────────

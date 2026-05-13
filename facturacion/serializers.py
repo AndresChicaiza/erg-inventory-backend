@@ -26,6 +26,8 @@ class FacturaSerializer(serializers.ModelSerializer):
     cliente_agente_ret     = serializers.BooleanField(source='cliente.agente_retenedor', read_only=True)
     cliente_gran_contrib   = serializers.BooleanField(source='cliente.gran_contribuyente', read_only=True)
     creado_por_nombre      = serializers.CharField(source='creado_por.nombre',         read_only=True)
+    vendedor_nombre        = serializers.CharField(source='vendedor.nombre',           read_only=True)
+    bodega_nombre          = serializers.CharField(source='bodega.nombre',             read_only=True)
     detalles               = DetalleFacturaSerializer(many=True, read_only=True)
 
     class Meta:

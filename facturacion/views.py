@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
-from core.permissions import IsAdminOrContador
+from core.permissions import IsAdminOrContador, CanEmitirFactura
 from .models import Factura, DetalleFactura, NotaCredito
 from .serializers import (
     FacturaSerializer, FacturaListSerializer,
@@ -109,7 +109,7 @@ class DetalleFacturaDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class EmitirFacturaView(APIView):
     """POST /api/facturas/<id>/emitir/ — cambia estado a Emitida."""
-    permission_classes = [IsAdminOrContador]
+    permission_classes = [CanEmitirFactura]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -133,6 +133,53 @@ class EmitirFacturaView(APIView):
         factura.estado          = 'Emitida'
         factura.emitida_por     = request.user
         factura.fecha_emision_ts = timezone.now()
+
+        # ── Descontar inventario ──
+        if factura.bodega:
+            from bodegas.models import StockBodega
+            from movimientos.models import Movimiento
+
+            for detalle in factura.detalles.all():
+                if not detalle.producto:
+                    continue  # Si es un ítem manual sin producto, se ignora
+
+                producto = detalle.producto
+                cantidad = detalle.cantidad
+
+                # 1. Validar y descontar stock global
+                if producto.stock < cantidad:
+                    return Response(
+                        {'error': f'Stock global insuficiente para el producto "{producto.nombre}". Disponible: {producto.stock}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                producto.stock -= cantidad
+                producto.save(update_fields=['stock'])
+
+                # 2. Validar y descontar stock de bodega
+                sb = StockBodega.objects.select_for_update().filter(
+                    bodega_id=factura.bodega_id,
+                    producto=producto
+                ).first()
+
+                if not sb or sb.cantidad < cantidad:
+                    disponible = sb.cantidad if sb else 0
+                    return Response(
+                        {'error': f'Stock insuficiente en bodega "{factura.bodega.nombre}" para el producto "{producto.nombre}". Disponible: {disponible}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                sb.cantidad -= cantidad
+                sb.save()
+
+                # 3. Registrar movimiento de salida
+                Movimiento.objects.create(
+                    producto=producto,
+                    tipo='Salida',
+                    cantidad=cantidad,
+                    referencia=factura.numero_completo,
+                    observacion=f'Salida por emisión de Factura a {factura.cliente.razon_social} — Bodega: {factura.bodega.nombre}',
+                    creado_por=request.user
+                )
+
         factura.save(update_fields=['estado', 'emitida_por', 'fecha_emision_ts'])
 
         return Response(FacturaSerializer(factura).data)

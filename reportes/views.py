@@ -80,3 +80,66 @@ class ResumenView(APIView):
             'entregas_por_estado':  list(entregas_estado),
             'movimientos_por_tipo': list(movs_tipo),
         })
+
+
+class FlujoCajaView(APIView):
+    """GET /api/reportes/flujo-caja/ — resumen financiero cruzado de CXC y CXP"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.utils import timezone
+        import datetime
+        from cxc.models import CuentaPorCobrar
+        from cxp.models import CuentaPorPagar
+
+        hoy  = timezone.now().date()
+        d7   = hoy + datetime.timedelta(days=7)
+        d30  = hoy + datetime.timedelta(days=30)
+
+        # ── CXC (por cobrar) ──
+        cxc_qs = CuentaPorCobrar.objects.exclude(estado__in=['Pagada', 'Anulada'])
+        cxc_total   = cxc_qs.aggregate(t=Sum('saldo'))['t'] or 0
+        cxc_vencida = cxc_qs.filter(fecha_vencimiento__lt=hoy).aggregate(t=Sum('saldo'))['t'] or 0
+        cxc_semana  = cxc_qs.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=d7).aggregate(t=Sum('saldo'))['t'] or 0
+        cxc_mes     = cxc_qs.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=d30).aggregate(t=Sum('saldo'))['t'] or 0
+
+        # ── CXP (por pagar) ──
+        cxp_qs = CuentaPorPagar.objects.exclude(estado__in=['Pagada', 'Anulada'])
+        cxp_total   = cxp_qs.aggregate(t=Sum('saldo'))['t'] or 0
+        cxp_vencida = cxp_qs.filter(fecha_vencimiento__lt=hoy).aggregate(t=Sum('saldo'))['t'] or 0
+        cxp_semana  = cxp_qs.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=d7).aggregate(t=Sum('saldo'))['t'] or 0
+        cxp_mes     = cxp_qs.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=d30).aggregate(t=Sum('saldo'))['t'] or 0
+
+        # ── Top 5 clientes con mayor cartera ──
+        top_clientes = list(
+            cxc_qs.values('cliente__razon_social')
+            .annotate(saldo_total=Sum('saldo'))
+            .order_by('-saldo_total')[:5]
+        )
+
+        # ── Top 5 proveedores con mayor deuda ──
+        top_proveedores = list(
+            cxp_qs.values('proveedor__razon_social')
+            .annotate(saldo_total=Sum('saldo'))
+            .order_by('-saldo_total')[:5]
+        )
+
+        return Response({
+            'cxc': {
+                'total_pendiente': float(cxc_total),
+                'vencida':         float(cxc_vencida),
+                'proxima_semana':  float(cxc_semana),
+                'proximo_mes':     float(cxc_mes),
+                'num_cuentas':     cxc_qs.count(),
+            },
+            'cxp': {
+                'total_pendiente': float(cxp_total),
+                'vencida':         float(cxp_vencida),
+                'proxima_semana':  float(cxp_semana),
+                'proximo_mes':     float(cxp_mes),
+                'num_cuentas':     cxp_qs.count(),
+            },
+            'posicion_neta':   float(cxc_total) - float(cxp_total),
+            'top_clientes':    top_clientes,
+            'top_proveedores': top_proveedores,
+        })

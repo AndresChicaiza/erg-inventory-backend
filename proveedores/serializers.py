@@ -10,4 +10,4 @@ class ProveedorSerializer(serializers.ModelSerializer):
 class ProveedorMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Proveedor
-        fields = ('id', 'empresa', 'contacto', 'email')
+        fields = ('id', 'razon_social', 'contacto', 'email')

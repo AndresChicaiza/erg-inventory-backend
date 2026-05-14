@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 from core.permissions import IsAdminOrContador, CanEmitirFactura
+from core.mixins import AuditMixin
 from .models import Factura, DetalleFactura, NotaCredito
 from .serializers import (
     FacturaSerializer, FacturaListSerializer,
@@ -14,8 +15,10 @@ from .serializers import (
 from .calculadora import calcular_totales_desde_items, calcular_retenciones
 
 
-class FacturaListCreateView(generics.ListCreateAPIView):
+class FacturaListCreateView(AuditMixin, generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    audit_modulo       = 'Facturación'
+    audit_modelo       = 'Factura'
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['numero_completo', 'cliente__razon_social',
                           'cliente__numero_documento', 'estado']
@@ -56,13 +59,22 @@ class FacturaListCreateView(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(creado_por=self.request.user)
+        # Sobreescribimos para asegurar el creado_por Y el log
+        instance = serializer.save(creado_por=self.request.user)
+        from core.utils import log_action
+        log_action(
+            user=self.request.user, action='CREATE', modulo='Facturación',
+            modelo='Factura', objeto_id=instance.id,
+            descripcion=f"Factura emitida: {instance.numero_completo or instance.id}",
+            request=self.request
+        )
 
-
-class FacturaDetailView(generics.RetrieveUpdateAPIView):
+class FacturaDetailView(AuditMixin, generics.RetrieveUpdateAPIView):
     queryset           = Factura.objects.select_related('cliente').prefetch_related('detalles').all()
     serializer_class   = FacturaSerializer
     permission_classes = [IsAuthenticated]
+    audit_modulo       = 'Facturación'
+    audit_modelo       = 'Factura'
 
 
 class DetalleFacturaListCreateView(generics.ListCreateAPIView):

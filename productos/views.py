@@ -4,14 +4,17 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from core.permissions import IsAdminOrReadOnly
+from core.mixins import AuditMixin
 from .models import Producto
 from .serializers import ProductoSerializer, ProductoMiniSerializer
 
 
-class ProductoListCreateView(generics.ListCreateAPIView):
+class ProductoListCreateView(AuditMixin, generics.ListCreateAPIView):
     queryset           = Producto.objects.all()
     serializer_class   = ProductoSerializer
     permission_classes = [IsAdminOrReadOnly]
+    audit_modulo       = 'Inventario'
+    audit_modelo       = 'Producto'
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['nombre', 'codigo', 'categoria']
     ordering_fields    = ['nombre', 'stock', 'precio_venta', 'categoria']
@@ -33,12 +36,21 @@ class ProductoListCreateView(generics.ListCreateAPIView):
                 )
             except Bodega.DoesNotExist:
                 pass  # bodega_id inválido → se ignora silenciosamente
+        
+        from core.utils import log_action
+        log_action(
+            user=self.request.user, action='CREATE', modulo='Inventario',
+            modelo='Producto', objeto_id=producto.id,
+            descripcion=f"Creado producto: {producto.nombre} (Stock inicial: {producto.stock})",
+            request=self.request
+        )
 
-
-class ProductoDetailView(generics.RetrieveUpdateDestroyAPIView):
+class ProductoDetailView(AuditMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Producto.objects.all()
     serializer_class   = ProductoSerializer
     permission_classes = [IsAdminOrReadOnly]
+    audit_modulo       = 'Inventario'
+    audit_modelo       = 'Producto'
 
     def destroy(self, request, *args, **kwargs):
         try:

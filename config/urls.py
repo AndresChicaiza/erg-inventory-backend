@@ -47,6 +47,9 @@ urlpatterns = [
 
         # ── Reportes ──────────────────────────────────────────────
         path('reportes/',    include('reportes.urls')),
+
+        # ── Auditoría y Búsqueda ─────────────────────────────────
+        path('core/',        include('core.urls')),
     ])),
 ]
 

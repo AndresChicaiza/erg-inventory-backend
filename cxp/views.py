@@ -4,14 +4,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
-from core.mixins import CreatedByMixin
+from core.mixins import CreatedByMixin, AuditMixin
 from .models import CuentaPorPagar, PagoCXP
 from .serializers import CXPSerializer, PagoCXPSerializer
 
 
-class CXPListCreateView(CreatedByMixin, generics.ListCreateAPIView):
+class CXPListCreateView(AuditMixin, CreatedByMixin, generics.ListCreateAPIView):
     serializer_class   = CXPSerializer
     permission_classes = [IsAuthenticated]
+    audit_modulo       = 'Finanzas'
+    audit_modelo       = 'CXP'
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     # ✅ Fix: busca por razon_social en lugar de empresa
     search_fields      = ['proveedor__razon_social', 'proveedor__numero_documento', 'concepto', 'estado']
@@ -57,16 +59,20 @@ class CXPListCreateView(CreatedByMixin, generics.ListCreateAPIView):
         return qs
 
 
-class CXPDetailView(generics.RetrieveUpdateDestroyAPIView):
+class CXPDetailView(AuditMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = CuentaPorPagar.objects.select_related('proveedor').prefetch_related('pagos').all()
     serializer_class   = CXPSerializer
     permission_classes = [IsAuthenticated]
+    audit_modulo       = 'Finanzas'
+    audit_modelo       = 'CXP'
 
 
-class PagoCXPCreateView(CreatedByMixin, generics.CreateAPIView):
+class PagoCXPCreateView(AuditMixin, CreatedByMixin, generics.CreateAPIView):
     queryset           = PagoCXP.objects.all()
     serializer_class   = PagoCXPSerializer
     permission_classes = [IsAuthenticated]
+    audit_modulo       = 'Finanzas'
+    audit_modelo       = 'Pago CXP'
 
     def create(self, request, *args, **kwargs):
         cxp_id = request.data.get('cxp')

@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from core.permissions import IsAdmin
 
 from .models import Receta, IngredienteReceta, OrdenProduccion, ConsumoProduccion
 from .serializers import (
@@ -13,12 +14,20 @@ from .serializers import (
 class RecetaListCreateView(generics.ListCreateAPIView):
     queryset = Receta.objects.all()
     serializer_class = RecetaSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
 class RecetaDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Receta.objects.all()
     serializer_class = RecetaSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
 class IngredienteRecetaListCreateView(generics.ListCreateAPIView):
     serializer_class = IngredienteRecetaSerializer
@@ -39,7 +48,17 @@ class IngredienteRecetaDetailView(generics.RetrieveUpdateDestroyAPIView):
 class OrdenProduccionListCreateView(generics.ListCreateAPIView):
     queryset = OrdenProduccion.objects.select_related('receta__producto_terminado', 'creado_por').prefetch_related('consumos').all()
     serializer_class = OrdenProduccionSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        # Solo Admin y JefeFabrica crean/editan
+        from core.permissions import _rol
+        from rest_framework.permissions import BasePermission
+        class CanProduccion(BasePermission):
+            def has_permission(s, req, view):
+                return _rol(req, 'Administrador', 'JefeFabrica')
+        return [CanProduccion()]
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -57,10 +76,25 @@ class OrdenProduccionListCreateView(generics.ListCreateAPIView):
 class OrdenProduccionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = OrdenProduccion.objects.all()
     serializer_class = OrdenProduccionSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        from core.permissions import _rol
+        from rest_framework.permissions import BasePermission
+        class CanProduccion(BasePermission):
+            def has_permission(s, req, view):
+                return _rol(req, 'Administrador', 'JefeFabrica')
+        return [CanProduccion()]
 
 class CompletarOrdenProduccionView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        from core.permissions import _rol
+        from rest_framework.permissions import BasePermission
+        class CanProduccion(BasePermission):
+            def has_permission(s, req, view):
+                return _rol(req, 'Administrador', 'JefeFabrica')
+        return [CanProduccion()]
 
     @transaction.atomic
     def post(self, request, pk):

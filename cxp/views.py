@@ -59,7 +59,9 @@ class CXPListCreateView(AuditMixin, CreatedByMixin, generics.ListCreateAPIView):
         return qs
 
 
-class CXPDetailView(AuditMixin, generics.RetrieveUpdateDestroyAPIView):
+from core.mixins import AuditMixin, CheckCierreMixin
+
+class CXPDetailView(CheckCierreMixin, AuditMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = CuentaPorPagar.objects.select_related('proveedor').prefetch_related('pagos').all()
     serializer_class   = CXPSerializer
     permission_classes = [IsAuthenticated]

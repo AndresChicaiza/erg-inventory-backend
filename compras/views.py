@@ -1,6 +1,7 @@
 from rest_framework import generics, filters
 from rest_framework.permissions import IsAuthenticated
 from core.mixins import CreatedByMixin
+from core.permissions import CanCreateOC, CanAprobarOC, CanRecibirOC
 from .models import Compra
 from .serializers import CompraSerializer
 
@@ -8,7 +9,7 @@ from .serializers import CompraSerializer
 class CompraListCreateView(CreatedByMixin, generics.ListCreateAPIView):
     queryset = Compra.objects.select_related('proveedor', 'creado_por').prefetch_related('detalles__producto').all()
     serializer_class   = CompraSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanCreateOC]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['proveedor__razon_social', 'producto__nombre', 'estado']
     ordering_fields    = ['fecha', 'total', 'estado']
@@ -17,7 +18,7 @@ class CompraListCreateView(CreatedByMixin, generics.ListCreateAPIView):
 class CompraDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset           = Compra.objects.select_related('proveedor').prefetch_related('detalles__producto').all()
     serializer_class   = CompraSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanCreateOC]
 
 
 from rest_framework.views import APIView
@@ -35,7 +36,7 @@ class RecibirCompraView(APIView):
       }
     }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanRecibirOC]
 
     @transaction.atomic
     def post(self, request, pk):

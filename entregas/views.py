@@ -13,10 +13,16 @@ class EntregaListCreateView(CreatedByMixin, generics.ListCreateAPIView):
         'cliente', 'creado_por', 'bodega_origen', 'bodega_destino'
     ).prefetch_related('detalles').all()
     serializer_class   = EntregaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # Vendedor, Logística, Admin pueden ver entregas
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['cliente__nombre', 'estado', 'transportista', 'numero_guia']
     ordering_fields    = ['creado_en', 'estado', 'fecha_estimada']
+
+    def get_permissions(self):
+        from core.permissions import CanEditEnvio
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [CanEditEnvio()]
 
 
 class EntregaDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -25,6 +31,12 @@ class EntregaDetailView(generics.RetrieveUpdateDestroyAPIView):
     ).prefetch_related('detalles').all()
     serializer_class   = EntregaSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        from core.permissions import CanEditEnvio
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [CanEditEnvio()]
 
 
 class RecibirTrasladoView(APIView):

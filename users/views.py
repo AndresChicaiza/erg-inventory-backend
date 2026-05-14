@@ -24,9 +24,14 @@ class MeView(APIView):
 class SedeListCreateView(generics.ListCreateAPIView):
     queryset           = Sede.objects.all()
     serializer_class   = SedeSerializer
-    permission_classes = [IsAdminOrContador]
+    # permission_classes = [IsAdminOrContador] (se maneja en get_permissions)
     filter_backends    = [filters.SearchFilter]
     search_fields      = ['nombre', 'tipo', 'ciudad']
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
 
 class SedeDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -39,7 +44,7 @@ class SedeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class UsuarioListCreateView(generics.ListCreateAPIView):
     queryset           = Usuario.objects.select_related('sede').all()
-    permission_classes = [IsAdmin]
+    # permission_classes = [IsAdmin] (se maneja en get_permissions)
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['nombre', 'email', 'rol']
     ordering_fields    = ['nombre', 'rol', 'creado_en']
@@ -48,6 +53,11 @@ class UsuarioListCreateView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return UsuarioCreateSerializer
         return UsuarioSerializer
+        
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
 
 class UsuarioDetailView(generics.RetrieveUpdateDestroyAPIView):

@@ -7,6 +7,8 @@ from core.permissions import IsAdminOrReadOnly
 from core.mixins import AuditMixin
 from .models import Producto
 from .serializers import ProductoSerializer, ProductoMiniSerializer
+import openpyxl
+from decimal import Decimal
 
 
 class ProductoListCreateView(AuditMixin, generics.ListCreateAPIView):
@@ -126,3 +128,57 @@ class LoteListView(generics.ListAPIView):
             for lote in queryset
         ]
         return Response(data)
+
+class ProductoImportView(APIView):
+    """POST /api/productos/importar/"""
+    permission_classes = [IsAdminOrReadOnly]
+    
+    @transaction.atomic
+    def post(self, request):
+        archivo = request.FILES.get('archivo')
+        if not archivo:
+            return Response({'error': 'No se proporcionó archivo'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            wb = openpyxl.load_workbook(archivo, data_only=True)
+            sheet = wb.active
+            creados = 0
+            actualizados = 0
+            
+            for i, row in enumerate(sheet.iter_rows(values_only=True), 1):
+                if i == 1: continue
+                if not row[0]: continue
+                
+                codigo = str(row[0]).strip()
+                nombre = str(row[1]).strip() if row[1] else ''
+                categoria = str(row[2]).strip() if row[2] else 'General'
+                precio_venta = row[3] or 0
+                precio_costo = row[4] or 0
+                stock_minimo = row[5] or 5
+                
+                if not nombre: continue
+                
+                prod, created = Producto.objects.update_or_create(
+                    codigo=codigo,
+                    defaults={
+                        'nombre': nombre,
+                        'categoria': categoria,
+                        'precio_venta': Decimal(str(precio_venta)),
+                        'precio_costo': Decimal(str(precio_costo)),
+                        'stock_minimo': int(stock_minimo)
+                    }
+                )
+                if created: creados += 1
+                else: actualizados += 1
+                
+            from core.utils import log_action
+            log_action(
+                user=request.user, action='CREATE', modulo='Inventario',
+                modelo='Producto', objeto_id=0,
+                descripcion=f"Importación masiva: {creados} creados, {actualizados} actualizados.",
+                request=request
+            )
+                
+            return Response({'mensaje': f'Importación exitosa. Creados: {creados}, Actualizados: {actualizados}'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

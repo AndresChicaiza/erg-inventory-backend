@@ -54,3 +54,49 @@ class AuditMixin:
             descripcion=f"Eliminado registro: {obj_str}",
             request=self.request
         )
+
+from rest_framework.exceptions import ValidationError
+from datetime import date
+
+class CheckCierreMixin:
+    """Evita modificación o eliminación de registros anteriores al cierre contable."""
+    
+    def get_fecha_registro(self, instance):
+        # Sobrescribir en las vistas si el campo de fecha es distinto
+        if hasattr(instance, 'fecha_emision'): return instance.fecha_emision
+        if hasattr(instance, 'fecha_registro'): return instance.fecha_registro
+        if hasattr(instance, 'fecha_pago'): return instance.fecha_pago
+        if hasattr(instance, 'creado_en'): return instance.creado_en.date()
+        return None
+
+    def check_cierre(self, fecha):
+        if not fecha: return
+        from configuracion.models import ConfiguracionEmpresa
+        config = ConfiguracionEmpresa.objects.first()
+        if config and config.fecha_cierre_contable:
+            if isinstance(fecha, date):
+                # Ensure we only compare dates, not datetimes
+                if type(fecha) is not date:
+                    fecha = fecha.date()
+                if fecha <= config.fecha_cierre_contable:
+                    raise ValidationError(f"No se pueden modificar registros del período cerrado (antes o igual a {config.fecha_cierre_contable})")
+
+    def perform_update(self, serializer):
+        # Chequear la fecha del registro antes de actualizar
+        self.check_cierre(self.get_fecha_registro(serializer.instance))
+        
+        # También chequear si se intenta cambiar la fecha a una cerrada
+        nueva_fecha = None
+        data = serializer.validated_data
+        if 'fecha_emision' in data: nueva_fecha = data['fecha_emision']
+        elif 'fecha_registro' in data: nueva_fecha = data['fecha_registro']
+        elif 'fecha_pago' in data: nueva_fecha = data['fecha_pago']
+        
+        if nueva_fecha:
+            self.check_cierre(nueva_fecha)
+            
+        super().perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        self.check_cierre(self.get_fecha_registro(instance))
+        super().perform_destroy(instance)

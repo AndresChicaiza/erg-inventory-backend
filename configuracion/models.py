@@ -60,6 +60,7 @@ class ConfiguracionEmpresa(models.Model):
                            )
 
     # ── Meta ─────────────────────────────────────────────────────
+    fecha_cierre_contable = models.DateField(null=True, blank=True, help_text='No se permiten transacciones anteriores o iguales a esta fecha')
     actualizado_en       = models.DateTimeField(auto_now=True)
 
     class Meta:

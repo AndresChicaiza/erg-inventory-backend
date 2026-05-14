@@ -18,6 +18,10 @@ JEFE_FAB    = ('JefeFabrica',)
 BODEGUERO   = ('Bodeguero',)
 RRHH        = ('RRHH',)
 
+ADMIN_CONTA_VEND_LOG = ('Administrador', 'Contador', 'Vendedor', 'Logistica')
+ADMIN_CONTA_VEND_LOG_BOD_JEFE = ('Administrador', 'Contador', 'Vendedor', 'Logistica', 'Bodeguero', 'JefeFabrica')
+ADMIN_CONTA_VEND_BOD_JEFE = ('Administrador', 'Contador', 'Vendedor', 'Bodeguero', 'JefeFabrica')
+
 
 # ── Permisos básicos ─────────────────────────────────────────────────────────
 
@@ -46,19 +50,18 @@ class IsAdminOrReadOnly(BasePermission):
 # ── Productos ────────────────────────────────────────────────────────────────
 
 class CanCreateProducto(BasePermission):
-    """Solo Admin y Contador crean/editan productos."""
+    """Admin, Contador, JefeFabrica pueden crear."""
     def has_permission(self, request, view):
         if not (request.user and request.user.is_authenticated):
             return False
         if request.method in SAFE_METHODS:
             return True
-        return request.user.puede_crear_productos
-
+        return _rol(request, 'Administrador', 'Contador', 'JefeFabrica')
 
 class CanSubirProductoFinal(BasePermission):
-    """Admin, Contador y Logística suben productos terminados al inventario."""
+    """Admin, Contador, Logística y JefeFabrica suben productos terminados al inventario."""
     def has_permission(self, request, view):
-        return _rol(request, 'Administrador', 'Contador', 'Logistica')
+        return _rol(request, 'Administrador', 'Contador', 'Logistica', 'JefeFabrica')
 
 
 # ── Bodegas ──────────────────────────────────────────────────────────────────
@@ -78,12 +81,23 @@ class CanCreateBodega(BasePermission):
 class CanCreateVenta(BasePermission):
     """Admin, Contador y Vendedor crean ventas."""
     def has_permission(self, request, view):
-        return _rol(request, 'Administrador', 'Contador', 'Vendedor')
+        if not (request.user and request.user.is_authenticated): return False
+        if request.method in SAFE_METHODS: return _rol(request, *ADMIN_CONTA_VEND)
+        return _rol(request, *ADMIN_CONTA_VEND)
 
 
 class CanEmitirFactura(BasePermission):
     """Admin, Contador y Vendedor emiten facturas."""
     def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated): return False
+        if request.method in SAFE_METHODS: return _rol(request, *ADMIN_CONTA_VEND)
+        return _rol(request, *ADMIN_CONTA_VEND)
+
+class CanCreateCliente(BasePermission):
+    """Admin, Contador y Vendedor pueden crear/editar clientes."""
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated): return False
+        if request.method in SAFE_METHODS: return True
         return _rol(request, *ADMIN_CONTA_VEND)
 
 
@@ -96,6 +110,8 @@ class CanCreateOC(BasePermission):
     Admin y Contador: cualquier OC
     """
     def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated): return False
+        if request.method in SAFE_METHODS: return True
         return _rol(
             request,
             'Administrador', 'Contador',
@@ -106,6 +122,8 @@ class CanCreateOC(BasePermission):
 class CanAprobarOC(BasePermission):
     """Solo Admin y Contador aprueban OC."""
     def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated): return False
+        if request.method in SAFE_METHODS: return True
         return _rol(request, *ADMIN_CONTA)
 
 
@@ -127,10 +145,12 @@ class CanRecibirOC(BasePermission):
 class CanMovimientoInventario(BasePermission):
     """Logística y Vendedor (su sede) hacen movimientos."""
     def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated): return False
+        if request.method in SAFE_METHODS: return True
         return _rol(
             request,
             'Administrador', 'Contador',
-            'Logistica', 'Vendedor'
+            'Logistica', 'Vendedor', 'Bodeguero', 'JefeFabrica'
         )
 
 

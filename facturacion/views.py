@@ -16,7 +16,7 @@ from .calculadora import calcular_totales_desde_items, calcular_retenciones
 
 
 class FacturaListCreateView(AuditMixin, generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanEmitirFactura]
     audit_modulo       = 'Facturación'
     audit_modelo       = 'Factura'
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -69,17 +69,19 @@ class FacturaListCreateView(AuditMixin, generics.ListCreateAPIView):
             request=self.request
         )
 
-class FacturaDetailView(AuditMixin, generics.RetrieveUpdateAPIView):
+from core.mixins import AuditMixin, CheckCierreMixin
+
+class FacturaDetailView(CheckCierreMixin, AuditMixin, generics.RetrieveUpdateAPIView):
     queryset           = Factura.objects.select_related('cliente').prefetch_related('detalles').all()
     serializer_class   = FacturaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanEmitirFactura]
     audit_modulo       = 'Facturación'
     audit_modelo       = 'Factura'
 
 
 class DetalleFacturaListCreateView(generics.ListCreateAPIView):
     serializer_class   = DetalleFacturaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanEmitirFactura]
 
     def get_queryset(self):
         return DetalleFactura.objects.filter(
@@ -105,7 +107,7 @@ class DetalleFacturaListCreateView(generics.ListCreateAPIView):
 class DetalleFacturaDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset           = DetalleFactura.objects.all()
     serializer_class   = DetalleFacturaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanEmitirFactura]
 
     @transaction.atomic
     def perform_destroy(self, instance):

@@ -11,7 +11,7 @@ class ResumenView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from ventas.models import Venta
+        from facturacion.models import Factura
         from compras.models import Compra
         from productos.models import Producto
         from clientes.models import Cliente
@@ -20,13 +20,13 @@ class ResumenView(APIView):
         from entregas.models import Entrega
 
         # Totales monetarios
-        total_ventas  = Venta.objects.aggregate(t=Sum('total'))['t']  or 0
+        total_ventas  = Factura.objects.aggregate(t=Sum('total_a_pagar'))['t']  or 0
         total_compras = Compra.objects.aggregate(t=Sum('total'))['t'] or 0
 
         # Ventas por estado
         ventas_estado = (
-            Venta.objects.values('estado')
-            .annotate(cantidad=Count('id'), monto=Sum('total'))
+            Factura.objects.values('estado')
+            .annotate(cantidad=Count('id'), monto=Sum('total_a_pagar'))
         )
 
         # Compras por estado
@@ -64,7 +64,7 @@ class ResumenView(APIView):
             'utilidad_bruta': float(total_ventas - total_compras),
 
             # Conteos generales
-            'num_ventas':      Venta.objects.count(),
+            'num_ventas':      Factura.objects.count(),
             'num_compras':     Compra.objects.count(),
             'num_productos':   Producto.objects.count(),
             'num_clientes':    Cliente.objects.count(),

@@ -100,6 +100,9 @@ class Factura(models.Model):
     estado           = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='Borrador')
     notas            = models.TextField(blank=True)
 
+    # ── Logística ────────────────────────────────────────────────
+    requiere_envio   = models.BooleanField(default=False, help_text='Indica si esta factura debe pasar al módulo de entregas')
+
     # ── DIAN (futuro) ────────────────────────────────────────────
     cufe             = models.CharField(max_length=200, blank=True,
                            help_text='Código único DIAN — se llena al conectar con la DIAN')

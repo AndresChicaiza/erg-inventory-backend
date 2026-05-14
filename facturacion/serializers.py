@@ -56,7 +56,7 @@ class FacturaListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'numero_completo', 'fecha_emision', 'fecha_vencimiento',
             'cliente', 'cliente_razon_social', 'cliente_documento',
-            'condicion_pago', 'medio_pago', 'estado',
+            'condicion_pago', 'medio_pago', 'estado', 'requiere_envio',
             'subtotal', 'valor_iva_total', 'total_retenciones', 'total_a_pagar',
         )
 

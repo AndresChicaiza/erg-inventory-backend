@@ -220,6 +220,26 @@ class EmitirFacturaView(APIView):
 
         factura.save(update_fields=['estado', 'emitida_por', 'fecha_emision_ts'])
 
+        # ── Autogenerar Entrega si aplica ──
+        if factura.requiere_envio:
+            from entregas.models import Entrega, DetalleEntrega
+            entrega = Entrega.objects.create(
+                factura=factura,
+                tipo_entrega='Venta',
+                cliente=factura.cliente,
+                bodega_origen=factura.bodega,
+                direccion=factura.cliente.direccion or '',
+                estado='Pendiente',
+                creado_por=request.user
+            )
+            for detalle in factura.detalles.all():
+                if detalle.producto:
+                    DetalleEntrega.objects.create(
+                        entrega=entrega,
+                        producto=detalle.producto,
+                        cantidad=detalle.cantidad
+                    )
+
         # ── Crear Cuenta por Cobrar si es a crédito ──
         if factura.condicion_pago != 'Contado':
             from cxc.models import CuentaPorCobrar

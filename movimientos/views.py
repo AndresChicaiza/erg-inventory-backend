@@ -7,7 +7,7 @@ from .serializers import MovimientoSerializer
 
 
 class MovimientoListCreateView(generics.ListCreateAPIView):
-    queryset           = Movimiento.objects.select_related('producto', 'creado_por').all()
+    queryset           = Movimiento.objects.select_related('producto', 'bodega', 'creado_por').all()
     serializer_class   = MovimientoSerializer
     permission_classes = [CanMovimientoInventario]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -68,8 +68,23 @@ class MovimientoListCreateView(generics.ListCreateAPIView):
 
         producto.save(update_fields=['stock'])
 
+        # ── ACTUALIZAR STOCK POR BODEGA ─────────────────────────────────────────
+        if mov.bodega:
+            from bodegas.models import StockBodega
+            sb, _ = StockBodega.objects.get_or_create(
+                bodega=mov.bodega, producto=producto,
+                defaults={'cantidad': 0}
+            )
+            if mov.tipo == 'Entrada':
+                sb.cantidad += mov.cantidad
+            elif mov.tipo == 'Salida':
+                sb.cantidad = max(0, sb.cantidad - mov.cantidad)
+            elif mov.tipo == 'Ajuste':
+                sb.cantidad = mov.cantidad
+            sb.save()
+
 
 class MovimientoDetailView(generics.RetrieveAPIView):
-    queryset           = Movimiento.objects.select_related('producto').all()
+    queryset           = Movimiento.objects.select_related('producto', 'bodega').all()
     serializer_class   = MovimientoSerializer
     permission_classes = [IsAuthenticated]

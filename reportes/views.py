@@ -20,8 +20,8 @@ class ResumenView(APIView):
         from entregas.models import Entrega
 
         # Totales monetarios
-        total_ventas  = Factura.objects.aggregate(t=Sum('total_a_pagar'))['t']  or 0
-        total_compras = Compra.objects.aggregate(t=Sum('total'))['t'] or 0
+        total_ventas  = Factura.objects.exclude(estado='Anulada').aggregate(t=Sum('total_a_pagar'))['t']  or 0
+        total_compras = Compra.objects.exclude(estado='Anulada').aggregate(t=Sum('total'))['t'] or 0
 
         # Ventas por estado
         ventas_estado = (
@@ -106,13 +106,13 @@ class AlertasView(APIView):
         facturas_hoy = Factura.objects.filter(
             fecha_emision=hoy, estado__in=['Emitida', 'Pagada']
         )
-        ventas_hoy   = facturas_hoy.aggregate(t=Sum('total'))['t'] or 0
+        ventas_hoy   = facturas_hoy.aggregate(t=Sum('total_a_pagar'))['t'] or 0
         num_fact_hoy = facturas_hoy.count()
 
         facturas_mes = Factura.objects.filter(
             fecha_emision__gte=inicio_mes, estado__in=['Emitida', 'Pagada']
         )
-        ventas_mes   = facturas_mes.aggregate(t=Sum('total'))['t'] or 0
+        ventas_mes   = facturas_mes.aggregate(t=Sum('total_a_pagar'))['t'] or 0
         num_fact_mes = facturas_mes.count()
 
         # ── Stock ───────────────────────────────────────────────

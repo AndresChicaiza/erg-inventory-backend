@@ -72,12 +72,17 @@ class RecibirTrasladoView(APIView):
             # Movimiento de entrada
             Movimiento.objects.create(
                 producto=detalle.producto,
+                bodega=entrega.bodega_destino,
                 tipo='Entrada',
                 cantidad=detalle.cantidad,
-                referencia=f'Traslado ENT-{entrega.id:04d}',
+                referencia=f'Traslado Entrante ENT-{entrega.id:04d}',
                 observacion=f'Ingreso por traslado desde {entrega.bodega_origen.nombre if entrega.bodega_origen else "Desconocida"}',
                 creado_por=request.user
             )
+
+            # Sumar al stock global
+            detalle.producto.stock += detalle.cantidad
+            detalle.producto.save()
 
         entrega.estado = 'Entregada'
         from django.utils import timezone

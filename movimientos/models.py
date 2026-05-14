@@ -11,6 +11,7 @@ class Movimiento(models.Model):
     ]
 
     producto    = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='movimientos')
+    bodega      = models.ForeignKey('bodegas.Bodega', on_delete=models.PROTECT, related_name='movimientos', null=True, blank=True)
     lote        = models.ForeignKey('productos.Lote', on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos')
     tipo        = models.CharField(max_length=10, choices=TIPO_CHOICES)
     cantidad    = models.PositiveIntegerField()

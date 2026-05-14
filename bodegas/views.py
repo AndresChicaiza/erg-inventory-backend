@@ -11,15 +11,25 @@ from .serializers import BodegaSerializer, StockBodegaSerializer, TransferenciaS
 class BodegaListCreateView(generics.ListCreateAPIView):
     queryset           = Bodega.objects.all()
     serializer_class   = BodegaSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated] # Todos pueden ver; el permiso de escritura se valida en el metodo si es necesario o por roles
     filter_backends    = [filters.SearchFilter]
     search_fields      = ['nombre', 'codigo', 'ciudad']
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdminOrReadOnly()]
 
 
 class BodegaDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset           = Bodega.objects.all()
     serializer_class   = BodegaSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdminOrReadOnly()]
 
 
 class StockBodegaListView(generics.ListAPIView):
@@ -65,3 +75,5 @@ class TransferirStockView(APIView):
         destino.save()
 
         return Response({'message': f'Transferencia exitosa: {d["cantidad"]} unidades movidas'})
+
+

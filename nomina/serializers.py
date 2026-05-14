@@ -1,5 +1,22 @@
 from rest_framework import serializers
-from .models import PeriodoNomina, LineaNomina, ConceptoNomina
+from .models import Empleado, PeriodoNomina, LineaNomina, ConceptoNomina
+
+
+class EmpleadoSerializer(serializers.ModelSerializer):
+    sede_nombre = serializers.CharField(source='sede.nombre', read_only=True)
+    antiguedad  = serializers.FloatField(source='antiguedad_anios', read_only=True)
+
+    class Meta:
+        model  = Empleado
+        fields = '__all__'
+        read_only_fields = ('id', 'creado_en', 'actualizado_en')
+
+
+class EmpleadoMiniSerializer(serializers.ModelSerializer):
+    """Serializer ligero para listas desplegables."""
+    class Meta:
+        model  = Empleado
+        fields = ('id', 'nombre', 'numero_documento', 'cargo', 'salario_base', 'estado')
 
 
 class ConceptoNominaSerializer(serializers.ModelSerializer):
@@ -9,8 +26,12 @@ class ConceptoNominaSerializer(serializers.ModelSerializer):
 
 
 class LineaNominaSerializer(serializers.ModelSerializer):
-    empleado_nombre = serializers.CharField(source='empleado.nombre', read_only=True)
-    empleado_email  = serializers.CharField(source='empleado.email',  read_only=True)
+    empleado_nombre   = serializers.CharField(source='empleado.nombre',           read_only=True)
+    empleado_doc      = serializers.CharField(source='empleado.numero_documento',  read_only=True)
+    empleado_cargo    = serializers.CharField(source='empleado.cargo',             read_only=True)
+    empleado_banco    = serializers.CharField(source='empleado.banco',             read_only=True)
+    empleado_cuenta   = serializers.CharField(source='empleado.numero_cuenta',     read_only=True)
+    empleado_tipo_cta = serializers.CharField(source='empleado.tipo_cuenta',       read_only=True)
 
     class Meta:
         model  = LineaNomina

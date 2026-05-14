@@ -34,9 +34,11 @@ class Producto(models.Model):
 
     # ── Identificación ───────────────────────────────────────────
     codigo         = models.CharField(max_length=30, unique=True)
+    codigo_barras  = models.CharField(max_length=100, blank=True, null=True, help_text="Código EAN o UPC")
     nombre         = models.CharField(max_length=200)
     descripcion    = models.TextField(blank=True)
     categoria      = models.CharField(max_length=100)
+    imagen         = models.ImageField(upload_to='productos/', blank=True, null=True)
 
     # ── Tipo de inventario ───────────────────────────────────────
     tipo_inventario = models.CharField(
@@ -44,6 +46,12 @@ class Producto(models.Model):
                           choices=TIPO_INVENTARIO_CHOICES,
                           default='TERMINADO'
                       )
+    
+    # ── Control de Lotes ─────────────────────────────────────────
+    controla_vencimiento = models.BooleanField(
+        default=False,
+        help_text="Activar para productos perecederos (carnes, condimentos) que requieren Lote y Fecha de Vencimiento."
+    )
 
     # ── Unidad de medida ─────────────────────────────────────────
     unidad_medida  = models.CharField(
@@ -123,3 +131,28 @@ class Producto(models.Model):
         if not self.iva_incluido:
             return 0
         return round(float(self.precio_venta) - float(self.precio_sin_iva), 2)
+
+
+class Lote(models.Model):
+    ESTADO_CHOICES = [
+        ('Vigente', 'Vigente'),
+        ('Por Vencer', 'Por Vencer (<= 30 días)'),
+        ('Vencido', 'Vencido'),
+        ('Agotado', 'Agotado')
+    ]
+
+    producto          = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='lotes')
+    numero_lote       = models.CharField(max_length=100)
+    fecha_vencimiento = models.DateField()
+    stock_disponible  = models.IntegerField(default=0)
+    estado            = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='Vigente')
+    creado_en         = models.DateTimeField(auto_now_add=True)
+    actualizado_en    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'lotes'
+        ordering = ['fecha_vencimiento']
+        unique_together = ('producto', 'numero_lote')
+
+    def __str__(self):
+        return f'{self.numero_lote} (Vence: {self.fecha_vencimiento})'

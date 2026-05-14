@@ -21,8 +21,8 @@ class ProductoMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Producto
         fields = (
-            'id', 'codigo', 'nombre', 'categoria',
+            'id', 'codigo', 'codigo_barras', 'nombre', 'categoria',
             'precio_venta', 'precio_sin_iva', 'valor_iva_unitario',
             'iva_tipo', 'iva_incluido', 'unidad_medida',
-            'stock', 'estado',
+            'stock', 'estado', 'controla_vencimiento',
         )

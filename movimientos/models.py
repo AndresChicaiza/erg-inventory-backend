@@ -11,6 +11,7 @@ class Movimiento(models.Model):
     ]
 
     producto    = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='movimientos')
+    lote        = models.ForeignKey('productos.Lote', on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos')
     tipo        = models.CharField(max_length=10, choices=TIPO_CHOICES)
     cantidad    = models.PositiveIntegerField()
     referencia  = models.CharField(max_length=100, blank=True)
@@ -26,4 +27,5 @@ class Movimiento(models.Model):
         verbose_name = 'Movimiento'
 
     def __str__(self):
-        return f'{self.tipo} | {self.producto.nombre} | {self.cantidad}'
+        lote_str = f' (Lote: {self.lote.numero_lote})' if self.lote else ''
+        return f'{self.tipo} | {self.producto.nombre}{lote_str} | {self.cantidad}'

@@ -81,8 +81,36 @@ class ProductoStockBodegasView(APIView):
             for s in stocks
         ]
         return Response({
-            'producto_id':     producto.id,
             'producto_nombre': producto.nombre,
             'stock_total':     producto.stock,
             'bodegas':         data,
         })
+
+
+class LoteListView(generics.ListAPIView):
+    """
+    GET /api/productos/<producto_id>/lotes/
+    Devuelve los lotes activos (con stock disponible o en general) de un producto.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from .models import Lote
+        producto_id = self.kwargs['pk']
+        # Filtramos lotes que pertenezcan al producto.
+        # Ordenamos por fecha de vencimiento más próxima.
+        return Lote.objects.filter(producto_id=producto_id).order_by('fecha_vencimiento')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = [
+            {
+                'id': lote.id,
+                'numero_lote': lote.numero_lote,
+                'fecha_vencimiento': lote.fecha_vencimiento,
+                'stock_disponible': lote.stock_disponible,
+                'estado': lote.estado
+            }
+            for lote in queryset
+        ]
+        return Response(data)

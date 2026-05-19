@@ -120,7 +120,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     @property
     def puede_crear_productos(self):
-        return self.rol in ('Administrador', 'Contador')
+        return self.rol in ('Administrador', 'Contador', 'JefeFabrica')
 
     @property
     def puede_aprobar_oc(self):
@@ -128,4 +128,4 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     @property
     def puede_facturar(self):
-        return self.rol in ('Administrador', 'Contador')
+        return self.rol in ('Administrador', 'Contador', 'Vendedor')

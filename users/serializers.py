@@ -39,6 +39,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
+        
+        # Sincronizar is_active con estado si se está actualizando
+        if 'estado' in validated_data:
+            instance.is_active = (validated_data['estado'] == 'Activo')
+
         for k, v in validated_data.items():
             setattr(instance, k, v)
         if password:
@@ -48,7 +53,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 
 class UsuarioCreateSerializer(UsuarioSerializer):
-    password = serializers.CharField(write_only=True, required=True, min_length=6)
+    password = serializers.CharField(write_only=True, required=False, min_length=6)
 
     class Meta(UsuarioSerializer.Meta):
         fields = UsuarioSerializer.Meta.fields + ['password']

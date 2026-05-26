@@ -22,7 +22,7 @@ def get_intent_gemini(query_text):
     Responde SOLO el JSON crudo, sin bloques de código markdown de json. No incluyas saltos de linea.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         res = model.generate_content(prompt).text
         res = res.replace('```json', '').replace('```', '').strip()
         return json.loads(res)
@@ -42,7 +42,7 @@ def format_response_gemini(query_text, intent, datos_raw):
     - No inventes datos. Si el contexto de BD está vacío, di que no encontraste información.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         return model.generate_content(prompt).text
     except Exception as e:
         return f"Ocurrió un error al conectar con Gemini: {str(e)}"

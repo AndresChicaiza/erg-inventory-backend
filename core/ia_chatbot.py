@@ -26,7 +26,8 @@ def get_intent_gemini(query_text):
         res = model.generate_content(prompt).text
         res = res.replace('```json', '').replace('```', '').strip()
         return json.loads(res)
-    except:
+    except Exception as e:
+        print("Error en get_intent:", e)
         return {'intent': 'ayuda', 'keywords': []}
 
 def format_response_gemini(query_text, intent, datos_raw):
@@ -43,8 +44,8 @@ def format_response_gemini(query_text, intent, datos_raw):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         return model.generate_content(prompt).text
-    except:
-        return "Aquí tienes la información solicitada."
+    except Exception as e:
+        return f"Ocurrió un error al conectar con Gemini: {str(e)}"
 
 def responder_consulta_ia(query_text):
     query_text = query_text.strip()

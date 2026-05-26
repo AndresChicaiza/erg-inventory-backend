@@ -15,7 +15,7 @@ class CompraListCreateView(CreatedByMixin, generics.ListCreateAPIView):
     ordering_fields    = ['fecha', 'total', 'estado']
 
 
-class CompraDetailView(generics.RetrieveUpdateDestroyAPIView):
+class CompraDetailView(generics.RetrieveUpdateAPIView):
     queryset           = Compra.objects.select_related('proveedor').prefetch_related('detalles__producto').all()
     serializer_class   = CompraSerializer
     permission_classes = [CanCreateOC]
@@ -131,3 +131,37 @@ class RecibirCompraView(APIView):
             'cxp_id': cxp.id,
             'fecha_vencimiento_pago': str(fecha_venc_pago),
         })
+
+
+class CancelarCompraView(APIView):
+    """POST /api/compras/<id>/cancelar/"""
+    permission_classes = [CanCreateOC]
+
+    def post(self, request, pk):
+        try:
+            compra = Compra.objects.get(pk=pk)
+        except Compra.DoesNotExist:
+            return Response({'error': 'Orden de compra no encontrada'}, status=404)
+
+        if compra.estado == 'Cancelada':
+            return Response({'error': 'La orden de compra ya está cancelada'}, status=400)
+            
+        if compra.estado == 'Recibida':
+            return Response({'error': 'No se puede cancelar una orden de compra ya Recibida.'}, status=400)
+
+        compra.estado = 'Cancelada'
+        compra.save(update_fields=['estado'])
+        
+        # Registrar acción en auditoría
+        from core.utils import log_action
+        log_action(
+            user=request.user,
+            action='UPDATE',
+            modulo='Compras',
+            modelo='Compra',
+            objeto_id=compra.id,
+            descripcion=f"Orden de compra cancelada: OC-{compra.id:04d}",
+            request=request
+        )
+
+        return Response({'mensaje': 'Orden de compra cancelada correctamente'})

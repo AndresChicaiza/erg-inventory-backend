@@ -10,6 +10,9 @@ from .serializers import (
 )
 
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+from core.utils import log_action
+
 # ── Auth: quién soy ───────────────────────────────────────────────────────────
 
 class MeView(APIView):
@@ -17,6 +20,43 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UsuarioMeSerializer(request.user).data)
+
+
+class LoggedTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            email = request.data.get('email')
+            try:
+                user = Usuario.objects.get(email=email)
+                log_action(
+                    user=user,
+                    action='LOGIN',
+                    modulo='Autenticación',
+                    modelo='Usuario',
+                    objeto_id=user.id,
+                    descripcion=f"Inicio de sesión exitoso para {user.nombre}",
+                    request=request
+                )
+            except Usuario.DoesNotExist:
+                pass
+        return response
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        log_action(
+            user=request.user,
+            action='LOGOUT',
+            modulo='Autenticación',
+            modelo='Usuario',
+            objeto_id=request.user.id,
+            descripcion=f"Cierre de sesión para {request.user.nombre}",
+            request=request
+        )
+        return Response({'mensaje': 'Sesión cerrada correctamente'})
 
 
 # ── Sedes ─────────────────────────────────────────────────────────────────────

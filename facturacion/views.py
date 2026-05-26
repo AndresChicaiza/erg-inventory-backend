@@ -409,6 +409,84 @@ class NotaCreditoListCreateView(generics.ListCreateAPIView):
     queryset           = NotaCredito.objects.select_related('factura_original').all()
     serializer_class   = NotaCreditoSerializer
     permission_classes = [IsAdminOrContador]
+    filterset_fields   = ['motivo', 'factura_original']
 
     def perform_create(self, serializer):
-        serializer.save(creado_por=self.request.user)
+        with transaction.atomic():
+            nc = serializer.save(creado_por=self.request.user)
+            factura = nc.factura_original
+
+            # 1. Revertir inventario si el motivo es ANULACION o DEVOLUCION
+            if nc.motivo in ['ANULACION', 'DEVOLUCION']:
+                if factura.bodega:
+                    from bodegas.models import StockBodega
+                    from movimientos.models import Movimiento
+                    
+                    for detalle in factura.detalles.all():
+                        if not detalle.producto:
+                            continue
+                        
+                        producto = detalle.producto
+                        cantidad = detalle.cantidad
+                        
+                        # Aumentar stock global
+                        producto.stock += cantidad
+                        producto.save(update_fields=['stock'])
+                        
+                        # Aumentar stock en bodega
+                        sb, created = StockBodega.objects.get_or_create(
+                            bodega_id=factura.bodega_id,
+                            producto=producto,
+                            defaults={'cantidad': 0}
+                        )
+                        sb.cantidad += cantidad
+                        sb.save()
+                        
+                        # Registrar movimiento de ingreso
+                        Movimiento.objects.create(
+                            producto=producto,
+                            tipo='Ingreso',
+                            cantidad=cantidad,
+                            referencia=nc.numero_completo,
+                            observacion=f'Reversión de stock por Nota de Crédito {nc.numero_completo} de Factura {factura.numero_completo}',
+                            creado_por=self.request.user
+                        )
+
+            # 2. Actualizar estado de la factura si es ANULACION
+            if nc.motivo == 'ANULACION':
+                factura.estado = 'Anulada'
+                factura.notas = f"{factura.notas}\n[ANULADA POR NC] {nc.numero_completo}: {nc.descripcion}".strip()
+                factura.save(update_fields=['estado', 'notas'])
+                
+                # Anular CXC si existe
+                if hasattr(factura, 'cxc'):
+                    cxc = factura.cxc
+                    cxc.estado = 'Anulada'
+                    cxc.save()
+            else:
+                # Si no es anulación completa, es un ajuste parcial (descuento, devolución, precio, etc.)
+                # Si hay una CXC asociada, reducir su monto_total (lo que reduce el saldo)
+                if hasattr(factura, 'cxc'):
+                    cxc = factura.cxc
+                    cxc.monto_total -= nc.total
+                    if cxc.monto_total < 0:
+                        cxc.monto_total = 0
+                    cxc.save()
+
+            # Registrar acción en auditoría
+            from core.utils import log_action
+            log_action(
+                user=self.request.user,
+                action='CREATE',
+                modulo='Facturación',
+                modelo='Nota de Crédito',
+                objeto_id=nc.id,
+                descripcion=f"Creada Nota de Crédito {nc.numero_completo} para Factura {factura.numero_completo}",
+                request=self.request
+            )
+
+
+class NotaCreditoDetailView(generics.RetrieveAPIView):
+    queryset           = NotaCredito.objects.select_related('factura_original').all()
+    serializer_class   = NotaCreditoSerializer
+    permission_classes = [IsAdminOrContador]

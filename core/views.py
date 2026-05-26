@@ -4,12 +4,83 @@ from django.db.models import Q
 from .models import AuditLog
 from .serializers import AuditLogSerializer
 
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Q
+import datetime
+from django.utils import timezone
+
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """Solo lectura para administradores."""
-    queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [permissions.IsAdminUser]
-    filterset_fields = ['accion', 'modulo', 'usuario']
+
+    def get_queryset(self):
+        qs = AuditLog.objects.select_related('usuario').all()
+        
+        # Filtros
+        accion = self.request.query_params.get('accion')
+        if accion:
+            qs = qs.filter(accion=accion)
+            
+        modulo = self.request.query_params.get('modulo')
+        if modulo:
+            qs = qs.filter(modulo=modulo)
+            
+        usuario = self.request.query_params.get('usuario')
+        if usuario:
+            qs = qs.filter(usuario_id=usuario)
+            
+        ip = self.request.query_params.get('ip')
+        if ip:
+            qs = qs.filter(ip_address__icontains=ip)
+
+        fecha_desde = self.request.query_params.get('fecha_desde')
+        if fecha_desde:
+            qs = qs.filter(fecha__date__gte=fecha_desde)
+            
+        fecha_hasta = self.request.query_params.get('fecha_hasta')
+        if fecha_hasta:
+            qs = qs.filter(fecha__date__lte=fecha_hasta)
+            
+        hora_desde = self.request.query_params.get('hora_desde')
+        if hora_desde:
+            qs = qs.filter(fecha__time__gte=hora_desde)
+            
+        hora_hasta = self.request.query_params.get('hora_hasta')
+        if hora_hasta:
+            qs = qs.filter(fecha__time__lte=hora_hasta)
+
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(descripcion__icontains=search) |
+                Q(usuario__nombre__icontains=search) |
+                Q(modelo__icontains=search) |
+                Q(modulo__icontains=search)
+            )
+
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def resumen(self, request):
+        from django.db.models import Count
+        
+        hoy = timezone.now().date()
+        logs_hoy = AuditLog.objects.filter(fecha__date=hoy)
+        
+        total_hoy = logs_hoy.count()
+        usuarios_activos_hoy = logs_hoy.values('usuario').distinct().count()
+        
+        acciones = AuditLog.objects.values('accion').annotate(count=Count('id')).order_by('-count')
+        modulos = AuditLog.objects.values('modulo').annotate(count=Count('id')).order_by('-count')
+        
+        return Response({
+            'total_hoy': total_hoy,
+            'usuarios_activos_hoy': usuarios_activos_hoy,
+            'acciones': list(acciones),
+            'modulos': list(modulos),
+        })
 
 
 class GlobalSearchView(views.APIView):
@@ -84,3 +155,28 @@ class GlobalSearchView(views.APIView):
             })
 
         return Response(results)
+
+
+from .ia_chatbot import responder_consulta_ia
+from .ia_prediccion import calcular_predicciones_demanda
+
+class IAChatView(views.APIView):
+    """POST /api/core/ia/chat/"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        query_text = request.data.get('query', '')
+        if not query_text:
+            return Response({'error': 'La consulta no puede estar vacía.'}, status=400)
+        
+        response_data = responder_consulta_ia(query_text)
+        return Response(response_data)
+
+
+class IAPrediccionesView(views.APIView):
+    """GET /api/core/ia/predicciones/"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = calcular_predicciones_demanda()
+        return Response(data)

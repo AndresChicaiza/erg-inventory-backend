@@ -9,14 +9,22 @@ from .serializers import EntregaSerializer
 
 
 class EntregaListCreateView(CreatedByMixin, generics.ListCreateAPIView):
-    queryset = Entrega.objects.select_related(
-        'cliente', 'creado_por', 'bodega_origen', 'bodega_destino'
-    ).prefetch_related('detalles').all()
     serializer_class   = EntregaSerializer
-    permission_classes = [IsAuthenticated]  # Vendedor, Logística, Admin pueden ver entregas
+    permission_classes = [IsAuthenticated]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['cliente__nombre', 'estado', 'transportista', 'numero_guia']
     ordering_fields    = ['creado_en', 'estado', 'fecha_estimada']
+
+    def get_queryset(self):
+        qs = Entrega.objects.select_related(
+            'cliente', 'creado_por', 'bodega_origen', 'bodega_destino'
+        ).prefetch_related('detalles').all()
+
+        tipo = self.request.query_params.get('tipo_entrega')
+        if tipo:
+            qs = qs.filter(tipo_entrega=tipo)
+
+        return qs
 
     def get_permissions(self):
         from core.permissions import CanEditEnvio

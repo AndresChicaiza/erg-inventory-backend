@@ -57,7 +57,7 @@ class CXCListCreateView(AuditMixin, CreatedByMixin, generics.ListCreateAPIView):
 
 from core.mixins import AuditMixin, CheckCierreMixin
 
-class CXCDetailView(CheckCierreMixin, AuditMixin, generics.RetrieveUpdateDestroyAPIView):
+class CXCDetailView(CheckCierreMixin, AuditMixin, generics.RetrieveUpdateAPIView):
     queryset           = CuentaPorCobrar.objects.select_related('cliente').prefetch_related('pagos').all()
     serializer_class   = CXCSerializer
     permission_classes = [IsAuthenticated]
@@ -124,3 +124,39 @@ class CXCResumenView(APIView):
             },
         }
         return Response(data)
+
+
+class AnularCXCView(APIView):
+    """POST /api/cxc/<id>/anular/"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            cxc = CuentaPorCobrar.objects.get(pk=pk)
+        except CuentaPorCobrar.DoesNotExist:
+            return Response({'error': 'CXC no encontrada'}, status=404)
+
+        if cxc.estado == 'Anulada':
+            return Response({'error': 'La CXC ya está anulada'}, status=400)
+            
+        if cxc.estado == 'Pagada':
+            return Response({'error': 'No se puede anular una CXC ya pagada'}, status=400)
+
+        motivo = request.data.get('motivo', 'Sin motivo especificado')
+        cxc.estado = 'Anulada'
+        cxc.notas  = f'{cxc.notas}\n[ANULADA] {motivo}'.strip()
+        cxc.save()
+        
+        # Registrar acción en auditoría
+        from core.utils import log_action
+        log_action(
+            user=request.user,
+            action='UPDATE',
+            modulo='Finanzas',
+            modelo='CXC',
+            objeto_id=cxc.id,
+            descripcion=f"CXC anulada: {cxc.concepto}. Motivo: {motivo}",
+            request=request
+        )
+
+        return Response({'mensaje': 'Cuenta por cobrar anulada correctamente'})

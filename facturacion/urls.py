@@ -5,7 +5,7 @@ from .views import (
     EmitirFacturaView, AnularFacturaView, MarcarFacturaPagadaView,
     CalcularImpuestosView, FacturaPDFView,
     ResumenFacturacionView,
-    NotaCreditoListCreateView,
+    NotaCreditoListCreateView, NotaCreditoDetailView,
 )
 
 urlpatterns = [
@@ -25,4 +25,5 @@ urlpatterns = [
 
     # Notas crédito
     path('notas-credito/',                     NotaCreditoListCreateView.as_view(),    name='nota-credito-list'),
+    path('notas-credito/<int:pk>/',            NotaCreditoDetailView.as_view(),        name='nota-credito-detail'),
 ]

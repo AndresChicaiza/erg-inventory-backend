@@ -469,3 +469,21 @@ class ExportarCXPView(APIView):
         resp = HttpResponse(buf, content_type='application/pdf')
         resp['Content-Disposition'] = 'attachment; filename="cxp_pendiente.pdf"'
         return resp
+
+
+class PrediccionStockView(APIView):
+    """GET /api/reportes/predicciones-stock/ — Predice el agotamiento de stock usando ML."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .ml_predictor import predecir_agotamiento_stock
+        
+        # Opcional: recibir parametro de dias desde el frontend
+        dias_historial = int(request.GET.get('dias_historial', 90))
+        
+        try:
+            resultados = predecir_agotamiento_stock(dias_historial=dias_historial)
+            return Response({'predicciones': resultados})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+

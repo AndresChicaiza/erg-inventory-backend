@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     ResumenView, AlertasView, FlujoCajaView,
     ExportarNominaView, ExportarCXCView, ExportarCXPView,
+    PrediccionStockView,
 )
 
 urlpatterns = [
@@ -12,4 +13,5 @@ urlpatterns = [
     path('exportar/nomina/<int:periodo_id>/', ExportarNominaView.as_view(), name='exportar-nomina'),
     path('exportar/cxc/',                 ExportarCXCView.as_view(),     name='exportar-cxc'),
     path('exportar/cxp/',                 ExportarCXPView.as_view(),     name='exportar-cxp'),
+    path('predicciones-stock/',           PrediccionStockView.as_view(), name='reportes-predicciones-stock'),
 ]

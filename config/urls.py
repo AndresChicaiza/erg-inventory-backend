@@ -3,14 +3,16 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from users.views import LoggedTokenObtainPairView, LogoutView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('api/', include([
         # ── Auth JWT ──────────────────────────────────────────────
-        path('auth/login/',   TokenObtainPairView.as_view(),  name='token_obtain'),
-        path('auth/refresh/', TokenRefreshView.as_view(),     name='token_refresh'),
+        path('auth/login/',   LoggedTokenObtainPairView.as_view(),  name='token_obtain'),
+        path('auth/logout/',  LogoutView.as_view(),                 name='token_logout'),
+        path('auth/refresh/', TokenRefreshView.as_view(),           name='token_refresh'),
 
         # ── Users y Sedes ─────────────────────────────────────────
         path('', include('users.urls')),

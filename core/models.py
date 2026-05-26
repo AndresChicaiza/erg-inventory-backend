@@ -9,6 +9,7 @@ class AuditLog(models.Model):
         ('UPDATE', 'Modificación'),
         ('DELETE', 'Eliminación'),
         ('LOGIN',  'Inicio de Sesión'),
+        ('LOGOUT', 'Cierre de Sesión'),
         ('EXPORT', 'Exportación'),
     )
 

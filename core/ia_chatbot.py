@@ -1,7 +1,6 @@
 import os
 import json
 from google import genai
-from google.genai import types
 from django.db.models import Sum, Q, F
 from django.utils import timezone
 from productos.models import Producto

@@ -27,7 +27,7 @@ def get_intent_gemini(query_text):
     try:
         client = _get_client()
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
             response_format={"type": "json_object"}
@@ -52,7 +52,7 @@ def format_response_gemini(query_text, intent, datos_raw):
     try:
         client = _get_client()
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )

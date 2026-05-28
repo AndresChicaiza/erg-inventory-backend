@@ -1,6 +1,6 @@
 import os
 import json
-from google import genai
+from groq import Groq
 from django.db.models import Sum, Q, F
 from django.utils import timezone
 from productos.models import Producto
@@ -8,12 +8,12 @@ from facturacion.models import Factura
 from cxc.models import CuentaPorCobrar
 from cxp.models import CuentaPorPagar
 
-# Configuración Gemini
-api_key = os.environ.get('GEMINI_API_KEY', '')
+# Configuración Groq
+api_key = os.environ.get('GROQ_API_KEY', '')
 
 
 def _get_client():
-    return genai.Client(api_key=api_key)
+    return Groq(api_key=api_key)
 
 
 def get_intent_gemini(query_text):
@@ -26,11 +26,13 @@ def get_intent_gemini(query_text):
     )
     try:
         client = _get_client()
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            response_format={"type": "json_object"}
         )
-        res = response.text.replace('```json', '').replace('```', '').strip()
+        res = response.choices[0].message.content
         return json.loads(res)
     except Exception as e:
         print("Error en get_intent:", e)
@@ -49,13 +51,14 @@ def format_response_gemini(query_text, intent, datos_raw):
     )
     try:
         client = _get_client()
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
         )
-        return response.text
+        return response.choices[0].message.content
     except Exception as e:
-        return f"Ocurrió un error al conectar con Gemini: {str(e)}"
+        return f"Ocurrió un error al conectar con Groq: {str(e)}"
 
 
 def responder_consulta_ia(query_text):

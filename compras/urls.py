@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     CompraListCreateView, CompraDetailView, RecibirCompraView, CancelarCompraView,
-    NotaCreditoProveedorListCreateView, NotaCreditoProveedorDetailView
+    NotaCreditoProveedorListCreateView, NotaCreditoProveedorDetailView,
+    DescargarOCPDFView
 )
 
 urlpatterns = [
@@ -9,6 +10,7 @@ urlpatterns = [
     path('<int:pk>/',          CompraDetailView.as_view(),     name='compra-detail'),
     path('<int:pk>/recibir/',  RecibirCompraView.as_view(),    name='compra-recibir'),
     path('<int:pk>/cancelar/', CancelarCompraView.as_view(),   name='compra-cancelar'),
+    path('<int:pk>/pdf/',       DescargarOCPDFView.as_view(),   name='compra-pdf'),
     path('notas-credito/',     NotaCreditoProveedorListCreateView.as_view(), name='compra-nc-list'),
     path('notas-credito/<int:pk>/', NotaCreditoProveedorDetailView.as_view(), name='compra-nc-detail'),
 ]

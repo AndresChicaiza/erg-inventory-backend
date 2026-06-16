@@ -1,4 +1,5 @@
 from django.db import models
+from decimal import Decimal
 from proveedores.models import Proveedor
 from productos.models import Producto
 from users.models import Usuario
@@ -19,14 +20,25 @@ class Compra(models.Model):
         ('60_dias',   '60 días'),
         ('90_dias',   '90 días'),
     ]
+    MONEDA_CHOICES = [
+        ('COP', 'Pesos Colombianos'),
+        ('USD', 'Dólares Estadounidenses'),
+    ]
 
     proveedor             = models.ForeignKey(Proveedor, on_delete=models.PROTECT, related_name='compras')
     bodega_destino        = models.ForeignKey('bodegas.Bodega', on_delete=models.PROTECT, null=True, blank=True, help_text='Bodega donde ingresará la mercadería')
+    
+    # Valores
+    moneda                = models.CharField(max_length=5, choices=MONEDA_CHOICES, default='COP')
+    subtotal              = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    total_iva             = models.DecimalField(max_digits=16, decimal_places=2, default=0)
     total                 = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    
     estado                = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='Borrador')
     condicion_pago        = models.CharField(max_length=15, choices=CONDICION_PAGO_CHOICES, default='Contado')
     dias_credito          = models.PositiveIntegerField(default=0)
     fecha_vencimiento_pago= models.DateField(null=True, blank=True)
+    fecha_esperada_entrega= models.DateField(null=True, blank=True)
     notas                 = models.TextField(blank=True)
     creado_por            = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True,
                                               related_name='compras_creadas')
@@ -40,9 +52,12 @@ class Compra(models.Model):
         verbose_name = 'Compra'
 
     def actualizar_total(self):
-        total = sum(detalle.subtotal for detalle in self.detalles.all())
-        self.total = total
-        self.save(update_fields=['total'])
+        subtotal = sum(detalle.subtotal for detalle in self.detalles.all())
+        total_iva = sum(detalle.valor_iva for detalle in self.detalles.all())
+        self.subtotal = subtotal
+        self.total_iva = total_iva
+        self.total = subtotal + total_iva
+        self.save(update_fields=['subtotal', 'total_iva', 'total'])
 
     def __str__(self):
         return f'OC-{self.id:04d} | {self.proveedor.razon_social}'
@@ -53,13 +68,16 @@ class DetalleCompra(models.Model):
     producto         = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='detalles_compra')
     cantidad         = models.PositiveIntegerField()
     precio_unitario  = models.DecimalField(max_digits=14, decimal_places=2)
+    porcentaje_iva   = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    valor_iva        = models.DecimalField(max_digits=16, decimal_places=2, default=0, editable=False)
     subtotal         = models.DecimalField(max_digits=16, decimal_places=2, editable=False)
 
     class Meta:
         db_table = 'detalle_compra'
 
     def save(self, *args, **kwargs):
-        self.subtotal = self.cantidad * self.precio_unitario
+        self.subtotal = Decimal(str(self.cantidad)) * Decimal(str(self.precio_unitario))
+        self.valor_iva = self.subtotal * (Decimal(str(self.porcentaje_iva)) / Decimal('100'))
         super().save(*args, **kwargs)
         self.compra.actualizar_total()
 

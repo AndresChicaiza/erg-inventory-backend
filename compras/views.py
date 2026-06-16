@@ -255,3 +255,25 @@ class NotaCreditoProveedorDetailView(generics.RetrieveAPIView):
     queryset           = NotaCreditoProveedor.objects.select_related('compra_original').all()
     serializer_class   = NotaCreditoProveedorSerializer
     permission_classes = [IsAdminOrContador]
+
+
+class DescargarOCPDFView(APIView):
+    """GET /api/compras/<id>/pdf/ — genera y descarga el PDF de la OC."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from django.http import HttpResponse
+        try:
+            compra = Compra.objects.select_related(
+                'proveedor', 'bodega_destino'
+            ).prefetch_related('detalles__producto').get(pk=pk)
+        except Compra.DoesNotExist:
+            return Response({'error': 'Orden de compra no encontrada'}, status=404)
+
+        from .pdf_generator import generar_pdf_orden_compra
+        pdf_bytes = generar_pdf_orden_compra(compra)
+
+        oc_num = f'OC-{compra.id:04d}'
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{oc_num}.pdf"'
+        return response

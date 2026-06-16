@@ -8,20 +8,23 @@ class DetalleCompraSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = DetalleCompra
-        fields = ('id', 'producto', 'producto_nombre', 'producto_codigo', 'cantidad', 'precio_unitario', 'subtotal')
-        read_only_fields = ('id', 'subtotal')
+        fields = ('id', 'producto', 'producto_nombre', 'producto_codigo', 'cantidad', 'precio_unitario', 'porcentaje_iva', 'valor_iva', 'subtotal')
+        read_only_fields = ('id', 'subtotal', 'valor_iva')
 
 
 class CompraSerializer(serializers.ModelSerializer):
-    proveedor_nombre = serializers.CharField(source='proveedor.razon_social',  read_only=True)
+    proveedor_nombre      = serializers.CharField(source='proveedor.razon_social', read_only=True)
+    proveedor_nit         = serializers.CharField(source='proveedor.numero_documento', read_only=True)
+    proveedor_dv          = serializers.CharField(source='proveedor.digito_verificacion', read_only=True)
+    proveedor_email       = serializers.CharField(source='proveedor.email', read_only=True)
     bodega_destino_nombre = serializers.CharField(source='bodega_destino.nombre', read_only=True)
-    creado_por_nombre = serializers.CharField(source='creado_por.nombre', read_only=True)
+    creado_por_nombre     = serializers.CharField(source='creado_por.nombre', read_only=True)
     detalles = DetalleCompraSerializer(many=True)
 
     class Meta:
         model  = Compra
         fields = '__all__'
-        read_only_fields = ('id', 'total', 'fecha', 'fecha_vencimiento_pago', 'creado_en', 'actualizado_en')
+        read_only_fields = ('id', 'subtotal', 'total_iva', 'total', 'fecha', 'fecha_vencimiento_pago', 'creado_en', 'actualizado_en')
 
     @transaction.atomic
     def create(self, validated_data):

@@ -6,6 +6,7 @@ from .views import (
     CalcularImpuestosView, FacturaPDFView,
     ResumenFacturacionView,
     NotaCreditoListCreateView, NotaCreditoDetailView,
+    EmitirDianView, ConsultarEstadoDianView,
 )
 
 urlpatterns = [
@@ -18,6 +19,8 @@ urlpatterns = [
     path('facturas/<int:pk>/anular/',          AnularFacturaView.as_view(),            name='factura-anular'),
     path('facturas/<int:pk>/pagar/',           MarcarFacturaPagadaView.as_view(),      name='factura-pagar'),
     path('facturas/<int:pk>/pdf/',             FacturaPDFView.as_view(),               name='factura-pdf'),
+    path('facturas/<int:pk>/emitir-dian/',     EmitirDianView.as_view(),               name='factura-emitir-dian'),
+    path('facturas/<int:pk>/estado-dian/',     ConsultarEstadoDianView.as_view(),      name='factura-estado-dian'),
 
     # Detalles (ítems) de factura
     path('facturas/<int:factura_id>/detalles/',       DetalleFacturaListCreateView.as_view(), name='detalle-list'),

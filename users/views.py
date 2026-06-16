@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from core.permissions import IsAdmin, IsAdminOrContador
+from core.mixins import AuditMixin
 from .models import Usuario, Sede
 from .serializers import (
     SedeSerializer, UsuarioSerializer,
@@ -82,7 +83,7 @@ class SedeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # ── Usuarios ──────────────────────────────────────────────────────────────────
 
-class UsuarioListCreateView(generics.ListCreateAPIView):
+class UsuarioListCreateView(AuditMixin, generics.ListCreateAPIView):
     queryset           = Usuario.objects.select_related('sede').all()
     # permission_classes = [IsAdmin] (se maneja en get_permissions)
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -100,7 +101,7 @@ class UsuarioListCreateView(generics.ListCreateAPIView):
         return [IsAdmin()]
 
 
-class UsuarioDetailView(generics.RetrieveUpdateDestroyAPIView):
+class UsuarioDetailView(AuditMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset           = Usuario.objects.select_related('sede').all()
     permission_classes = [IsAdmin]
 

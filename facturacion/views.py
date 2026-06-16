@@ -422,11 +422,17 @@ class NotaCreditoListCreateView(generics.ListCreateAPIView):
                     from bodegas.models import StockBodega
                     from movimientos.models import Movimiento
                     
-                    for detalle in factura.detalles.all():
-                        if not detalle.producto:
+                    # Si la nota crédito tiene detalles específicos (devolución parcial), usamos esos
+                    # Si no (anulación total sin detalles), usamos los detalles de la factura
+                    detalles_a_revertir = nc.detalles.all()
+                    if not detalles_a_revertir.exists() and nc.motivo == 'ANULACION':
+                        detalles_a_revertir = factura.detalles.all()
+                    
+                    for detalle in detalles_a_revertir:
+                        producto = detalle.producto
+                        if not producto:
                             continue
                         
-                        producto = detalle.producto
                         cantidad = detalle.cantidad
                         
                         # Aumentar stock global
@@ -489,4 +495,70 @@ class NotaCreditoListCreateView(generics.ListCreateAPIView):
 class NotaCreditoDetailView(generics.RetrieveAPIView):
     queryset           = NotaCredito.objects.select_related('factura_original').all()
     serializer_class   = NotaCreditoSerializer
-    permission_classes = [IsAdminOrContador]
+    permission_classes = [IsAdminOrContador]
+
+
+# ── Facturación Electrónica DIAN ──────────────────────────────────────────────
+
+class EmitirDianView(APIView):
+    """POST /api/facturas/<id>/emitir-dian/ — Envía la factura a la DIAN."""
+    permission_classes = [CanEmitirFactura]
+
+    def post(self, request, pk):
+        try:
+            factura = Factura.objects.select_related('cliente').prefetch_related('detalles').get(pk=pk)
+        except Factura.DoesNotExist:
+            return Response({'error': 'Factura no encontrada'}, status=404)
+
+        # Solo se puede enviar a la DIAN si ya fue emitida o pagada
+        if factura.estado not in ['Emitida', 'Pagada']:
+            return Response(
+                {'error': f'Solo se pueden enviar a la DIAN facturas Emitidas o Pagadas. Estado actual: {factura.estado}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verificar que no tenga CUFE (no reenviar)
+        if factura.cufe:
+            return Response(
+                {'error': 'Esta factura ya fue enviada a la DIAN.',
+                 'cufe': factura.cufe, 'qr_url': factura.qr_url},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Llamar al servicio DIAN (simulador o proveedor real)
+        from .dian_api import dian_service
+        resultado = dian_service.emitir(factura)
+
+        if resultado['exito']:
+            factura.cufe = resultado['cufe']
+            factura.qr_url = resultado['qr_url']
+            factura.save(update_fields=['cufe', 'qr_url'])
+
+            from core.utils import log_action
+            log_action(
+                user=request.user, action='DIAN_EMISION', modulo='Facturación',
+                modelo='Factura', objeto_id=factura.id,
+                descripcion=f"Factura {factura.numero_completo} enviada a la DIAN. CUFE: {factura.cufe[:30]}...",
+                request=request
+            )
+
+        return Response(resultado)
+
+
+class ConsultarEstadoDianView(APIView):
+    """GET /api/facturas/<id>/estado-dian/ — Consulta estado DIAN."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            factura = Factura.objects.get(pk=pk)
+        except Factura.DoesNotExist:
+            return Response({'error': 'Factura no encontrada'}, status=404)
+
+        from .dian_api import dian_service
+        resultado = dian_service.consultar_estado(factura.cufe)
+        resultado['factura'] = factura.numero_completo
+        resultado['tiene_cufe'] = bool(factura.cufe)
+
+        return Response(resultado)
+

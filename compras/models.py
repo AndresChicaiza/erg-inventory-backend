@@ -69,3 +69,55 @@ class DetalleCompra(models.Model):
 
     def __str__(self):
         return f'{self.cantidad} x {self.producto.nombre}'
+
+
+class NotaCreditoProveedor(models.Model):
+    MOTIVO_CHOICES = [
+        ('DEVOLUCION',  'Devolución de mercancía'),
+        ('DESCUENTO',   'Descuento comercial'),
+        ('ANULACION',   'Anulación de orden'),
+        ('PRECIO',      'Ajuste de precio'),
+        ('OTRO',        'Otro'),
+    ]
+
+    compra_original  = models.ForeignKey(Compra, on_delete=models.PROTECT, related_name='notas_credito')
+    numero           = models.CharField(max_length=50, blank=True, help_text='Número de nota crédito del proveedor')
+    motivo           = models.CharField(max_length=15, choices=MOTIVO_CHOICES)
+    descripcion      = models.TextField()
+
+    total            = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+
+    creado_por       = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True)
+    creado_en        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table     = 'notas_credito_proveedor'
+        ordering     = ['-creado_en']
+        verbose_name = 'Nota Crédito Proveedor'
+
+    def __str__(self):
+        return f'NCP-{self.id} → {self.compra_original}'
+
+    def recalcular_totales(self):
+        self.total = sum(d.subtotal for d in self.detalles.all())
+        self.save(update_fields=['total'])
+
+
+class DetalleNotaCreditoProveedor(models.Model):
+    nota_credito     = models.ForeignKey(NotaCreditoProveedor, on_delete=models.CASCADE, related_name='detalles')
+    detalle_compra   = models.ForeignKey(DetalleCompra, on_delete=models.SET_NULL, null=True, blank=True, related_name='notas_credito_aplicadas')
+    producto         = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True)
+    cantidad         = models.PositiveIntegerField()
+    precio_unitario  = models.DecimalField(max_digits=14, decimal_places=2)
+    subtotal         = models.DecimalField(max_digits=16, decimal_places=2, editable=False)
+
+    class Meta:
+        db_table  = 'nota_credito_proveedor_detalles'
+
+    def save(self, *args, **kwargs):
+        self.subtotal = self.cantidad * self.precio_unitario
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        nombre = self.producto.nombre if self.producto else 'Desconocido'
+        return f'{self.cantidad} x {nombre}'

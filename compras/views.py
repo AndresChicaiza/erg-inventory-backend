@@ -165,3 +165,86 @@ class CancelarCompraView(APIView):
         )
 
         return Response({'mensaje': 'Orden de compra cancelada correctamente'})
+
+
+from core.permissions import IsAdminOrContador
+from .models import NotaCreditoProveedor
+from .serializers import NotaCreditoProveedorSerializer
+
+class NotaCreditoProveedorListCreateView(generics.ListCreateAPIView):
+    queryset           = NotaCreditoProveedor.objects.select_related('compra_original').all()
+    serializer_class   = NotaCreditoProveedorSerializer
+    permission_classes = [IsAdminOrContador]
+    filterset_fields   = ['motivo', 'compra_original']
+
+    def perform_create(self, serializer):
+        with transaction.atomic():
+            nc = serializer.save(creado_por=self.request.user)
+            compra = nc.compra_original
+
+            # 1. Revertir inventario si el motivo es ANULACION o DEVOLUCION
+            if nc.motivo in ['ANULACION', 'DEVOLUCION']:
+                from movimientos.models import Movimiento
+                
+                detalles_a_revertir = nc.detalles.all()
+                if not detalles_a_revertir.exists() and nc.motivo == 'ANULACION':
+                    detalles_a_revertir = compra.detalles.all()
+                
+                for detalle in detalles_a_revertir:
+                    producto = detalle.producto
+                    if not producto:
+                        continue
+                    
+                    cantidad = detalle.cantidad
+                    
+                    # Reducir stock global
+                    producto.stock -= cantidad
+                    if producto.stock < 0:
+                        producto.stock = 0
+                    producto.save(update_fields=['stock'])
+                    
+                    # Registrar movimiento de salida
+                    Movimiento.objects.create(
+                        producto=producto,
+                        tipo='Salida',
+                        cantidad=cantidad,
+                        referencia=f"NCP-{nc.id}",
+                        observacion=f'Devolución a proveedor por Nota Crédito {nc.id} de OC-{compra.id:04d}',
+                        creado_por=self.request.user
+                    )
+
+            # 2. Actualizar estado de la compra si es ANULACION
+            if nc.motivo == 'ANULACION':
+                compra.estado = 'Cancelada'
+                compra.notas = f"{compra.notas}\n[ANULADA POR NC] NCP-{nc.id}: {nc.descripcion}".strip()
+                compra.save(update_fields=['estado', 'notas'])
+                
+                # Anular CXP si existe
+                if hasattr(compra, 'cxp'):
+                    cxp = compra.cxp
+                    cxp.estado = 'Anulada'
+                    cxp.save()
+            else:
+                # Ajuste parcial, reducir monto_total de CXP
+                if hasattr(compra, 'cxp'):
+                    cxp = compra.cxp
+                    cxp.monto_total -= nc.total
+                    if cxp.monto_total < 0:
+                        cxp.monto_total = 0
+                    cxp.save()
+
+            from core.utils import log_action
+            log_action(
+                user=self.request.user,
+                action='CREATE',
+                modulo='Compras',
+                modelo='Nota Crédito Proveedor',
+                objeto_id=nc.id,
+                descripcion=f"Creada Nota de Crédito Proveedor {nc.id} para Compra OC-{compra.id:04d}",
+                request=self.request
+            )
+
+class NotaCreditoProveedorDetailView(generics.RetrieveAPIView):
+    queryset           = NotaCreditoProveedor.objects.select_related('compra_original').all()
+    serializer_class   = NotaCreditoProveedorSerializer
+    permission_classes = [IsAdminOrContador]

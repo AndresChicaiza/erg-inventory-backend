@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Factura, DetalleFactura, NotaCredito
+from .models import Factura, DetalleFactura, NotaCredito, DetalleNotaCredito
 
 
 class DetalleFacturaSerializer(serializers.ModelSerializer):
@@ -58,6 +58,7 @@ class FacturaListSerializer(serializers.ModelSerializer):
             'cliente', 'cliente_razon_social', 'cliente_documento',
             'condicion_pago', 'medio_pago', 'estado', 'requiere_envio',
             'subtotal', 'valor_iva_total', 'total_retenciones', 'total_a_pagar',
+            'cufe', 'qr_url',
         )
 
 
@@ -68,12 +69,30 @@ class CalcularImpuestosSerializer(serializers.Serializer):
     items               = serializers.ListField(child=serializers.DictField())
 
 
+class DetalleNotaCreditoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DetalleNotaCredito
+        fields = '__all__'
+        read_only_fields = ('id', 'nota_credito', 'subtotal_linea', 'valor_iva_linea', 'total_linea')
+
+
 class NotaCreditoSerializer(serializers.ModelSerializer):
     factura_numero = serializers.CharField(
         source='factura_original.numero_completo', read_only=True
     )
+    detalles = DetalleNotaCreditoSerializer(many=True, required=False)
 
     class Meta:
         model  = NotaCredito
         fields = '__all__'
-        read_only_fields = ('id', 'numero', 'numero_completo', 'creado_en')
+        read_only_fields = ('id', 'numero', 'numero_completo', 'creado_en', 'subtotal', 'valor_iva', 'total')
+
+    def create(self, validated_data):
+        detalles_data = validated_data.pop('detalles', [])
+        nota_credito = NotaCredito.objects.create(**validated_data)
+        
+        for detalle_data in detalles_data:
+            DetalleNotaCredito.objects.create(nota_credito=nota_credito, **detalle_data)
+            
+        nota_credito.recalcular_totales()
+        return nota_credito

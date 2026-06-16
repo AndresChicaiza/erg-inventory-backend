@@ -3,6 +3,7 @@ from .views import (
     CXPListCreateView, CXPDetailView,
     PagoCXPCreateView, CXPResumenView, CXPPorProveedorView, AnularCXPView
 )
+from .views_exogena import Exogena1009View
 
 urlpatterns = [
     path('',                 CXPListCreateView.as_view(),    name='cxp-list'),
@@ -11,4 +12,5 @@ urlpatterns = [
     path('pagos/',           PagoCXPCreateView.as_view(),    name='cxp-pagos'),
     path('resumen/',         CXPResumenView.as_view(),       name='cxp-resumen'),
     path('por-proveedor/',   CXPPorProveedorView.as_view(),  name='cxp-por-proveedor'),
+    path('exogena/1009/',    Exogena1009View.as_view(),      name='exogena-1009'),
 ]

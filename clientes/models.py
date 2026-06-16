@@ -98,3 +98,33 @@ class Cliente(models.Model):
         return self.gran_contribuyente or (
             self.responsable_iva and self.agente_retenedor
         )
+
+    # ── Exógena (Formatos 1008/1009) ─────────────────────────────
+    @property
+    def exogena_primer_apellido(self):
+        if self.tipo_documento != 'CC': return ''
+        parts = self.razon_social.split()
+        return parts[0] if len(parts) > 0 else ''
+
+    @property
+    def exogena_segundo_apellido(self):
+        if self.tipo_documento != 'CC': return ''
+        parts = self.razon_social.split()
+        return parts[1] if len(parts) > 1 else ''
+
+    @property
+    def exogena_primer_nombre(self):
+        if self.tipo_documento != 'CC': return ''
+        parts = self.razon_social.split()
+        return parts[2] if len(parts) > 2 else ''
+
+    @property
+    def exogena_segundo_nombre(self):
+        if self.tipo_documento != 'CC': return ''
+        parts = self.razon_social.split()
+        return " ".join(parts[3:]) if len(parts) > 3 else ''
+
+    @property
+    def exogena_razon_social(self):
+        if self.tipo_documento == 'CC': return ''
+        return self.razon_social

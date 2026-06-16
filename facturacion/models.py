@@ -256,3 +256,48 @@ class NotaCredito(models.Model):
             self.numero         = (last.numero + 1) if last else 1
             self.numero_completo = f'NC-{str(self.numero).zfill(4)}'
         super().save(*args, **kwargs)
+
+    def recalcular_totales(self):
+        total_sub = sum(d.subtotal_linea for d in self.detalles.all())
+        total_iva = sum(d.valor_iva_linea for d in self.detalles.all())
+        self.subtotal = total_sub
+        self.valor_iva = total_iva
+        self.total = total_sub + total_iva
+        self.save(update_fields=['subtotal', 'valor_iva', 'total'])
+
+
+class DetalleNotaCredito(models.Model):
+    nota_credito     = models.ForeignKey(NotaCredito, on_delete=models.CASCADE, related_name='detalles')
+    detalle_factura  = models.ForeignKey(DetalleFactura, on_delete=models.SET_NULL, null=True, blank=True, related_name='notas_credito_aplicadas')
+    producto         = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True)
+    descripcion      = models.CharField(max_length=300)
+    cantidad         = models.DecimalField(max_digits=12, decimal_places=3)
+    precio_unitario  = models.DecimalField(max_digits=14, decimal_places=2)
+    
+    # Calculados
+    subtotal_linea   = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    valor_iva_linea  = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_linea      = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    class Meta:
+        db_table  = 'nota_credito_detalles'
+
+    def save(self, *args, **kwargs):
+        self.subtotal_linea = round(self.cantidad * self.precio_unitario, 2)
+        
+        # Calcular IVA de manera sencilla basado en el detalle original o un porcentaje
+        if self.detalle_factura:
+            if self.detalle_factura.iva_tipo == '19':
+                self.valor_iva_linea = round(self.subtotal_linea * 19 / 100, 2)
+            elif self.detalle_factura.iva_tipo == '5':
+                self.valor_iva_linea = round(self.subtotal_linea * 5 / 100, 2)
+            else:
+                self.valor_iva_linea = 0
+        else:
+            self.valor_iva_linea = 0
+            
+        self.total_linea = self.subtotal_linea + self.valor_iva_linea
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.nota_credito.numero_completo} | {self.descripcion}'

@@ -81,6 +81,7 @@ class RecibirCompraView(APIView):
             # Registrar el movimiento
             Movimiento.objects.create(
                 producto=producto,
+                bodega=compra.bodega_destino,
                 lote=lote_obj,
                 tipo='Entrada',
                 cantidad=cantidad,
@@ -92,6 +93,12 @@ class RecibirCompraView(APIView):
             # Actualizar stock general del producto
             producto.stock += cantidad
             producto.save(update_fields=['stock'])
+
+            if compra.bodega_destino:
+                from bodegas.models import StockBodega
+                sb, _ = StockBodega.objects.get_or_create(bodega=compra.bodega_destino, producto=producto, defaults={'cantidad': 0})
+                sb.cantidad += cantidad
+                sb.save()
 
         # Marcar la orden como recibida
         from django.utils import timezone

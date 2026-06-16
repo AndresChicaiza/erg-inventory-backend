@@ -21,6 +21,7 @@ class Compra(models.Model):
     ]
 
     proveedor             = models.ForeignKey(Proveedor, on_delete=models.PROTECT, related_name='compras')
+    bodega_destino        = models.ForeignKey('bodegas.Bodega', on_delete=models.PROTECT, null=True, blank=True, help_text='Bodega donde ingresará la mercadería')
     total                 = models.DecimalField(max_digits=16, decimal_places=2, default=0)
     estado                = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='Borrador')
     condicion_pago        = models.CharField(max_length=15, choices=CONDICION_PAGO_CHOICES, default='Contado')

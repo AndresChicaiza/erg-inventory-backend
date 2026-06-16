@@ -168,7 +168,7 @@ def generar_pdf_factura(factura):
         [Paragraph('<b>DATOS DEL CLIENTE</b>', style('ch', fontSize=8,
                    fontName='Helvetica-Bold', textColor=BLANCO)),
          '', '', ''],
-        ['Razón Social / Nombre:', Paragraph(f'<b>{cliente.razon_social}</b>', s_bold),
+        ['Razón Social:', Paragraph(f'<b>{cliente.razon_social}</b>', s_bold),
          'Tipo Doc:', Paragraph(f'<b>{cliente.tipo_documento}</b>', s_bold)],
         ['Documento:', Paragraph(f'<b>{cliente.numero_documento}{dv}</b>', s_bold),
          'Régimen:', Paragraph(regimen_cliente, s_titulo)],
@@ -180,7 +180,7 @@ def generar_pdf_factura(factura):
 
     cliente_table = Table(
         cliente_data,
-        colWidths=[W*0.18, W*0.32, W*0.15, W*0.35],
+        colWidths=[W*0.15, W*0.35, W*0.15, W*0.35],
     )
     cliente_table.setStyle(TableStyle([
         ('SPAN',        (0, 0), (3, 0)),

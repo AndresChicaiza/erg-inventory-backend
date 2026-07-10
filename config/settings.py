@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'nomina',
     'facturacion',
     'produccion',       # ← NUEVA
+    'marketplace',      # ← Marketplace B2B
 ]
 
 MIDDLEWARE = [

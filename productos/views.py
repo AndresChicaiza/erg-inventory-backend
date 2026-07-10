@@ -54,6 +54,35 @@ class ProductoDetailView(AuditMixin, generics.RetrieveUpdateDestroyAPIView):
     audit_modulo       = 'Inventario'
     audit_modelo       = 'Producto'
 
+    def perform_update(self, serializer):
+        producto_anterior = self.get_object()
+        precio_venta_ant = producto_anterior.precio_venta
+        precio_costo_ant = producto_anterior.precio_costo
+        stock_ant = producto_anterior.stock
+
+        producto_nuevo = serializer.save()
+
+        from .models import AuditoriaProducto
+        motivo = self.request.data.get('motivo_auditoria', 'Modificado desde panel administrativo')
+
+        cambios = []
+        if precio_venta_ant != producto_nuevo.precio_venta:
+            cambios.append(('Precio Venta', str(precio_venta_ant), str(producto_nuevo.precio_venta)))
+        if precio_costo_ant != producto_nuevo.precio_costo:
+            cambios.append(('Precio Costo', str(precio_costo_ant), str(producto_nuevo.precio_costo)))
+        if stock_ant != producto_nuevo.stock:
+            cambios.append(('Stock', str(stock_ant), str(producto_nuevo.stock)))
+
+        for campo, val_ant, val_nue in cambios:
+            AuditoriaProducto.objects.create(
+                producto=producto_nuevo,
+                usuario=self.request.user,
+                campo_modificado=campo,
+                valor_anterior=val_ant,
+                valor_nuevo=val_nue,
+                motivo=motivo
+            )
+
     def destroy(self, request, *args, **kwargs):
         try:
             return super().destroy(request, *args, **kwargs)
@@ -182,3 +211,27 @@ class ProductoImportView(APIView):
             return Response({'mensaje': f'Importación exitosa. Creados: {creados}, Actualizados: {actualizados}'})
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AuditoriaProductoListView(APIView):
+    """
+    GET /api/productos/<id>/auditoria/
+    Devuelve el historial de cambios de precio y stock de un producto.
+    """
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request, pk):
+        from .models import AuditoriaProducto
+        auditorias = AuditoriaProducto.objects.filter(producto_id=pk).select_related('usuario')
+        data = [
+            {
+                'id': a.id,
+                'fecha': a.fecha,
+                'usuario': a.usuario.nombre if a.usuario else 'Sistema',
+                'campo_modificado': a.campo_modificado,
+                'valor_anterior': a.valor_anterior,
+                'valor_nuevo': a.valor_nuevo,
+                'motivo': a.motivo,
+            }
+            for a in auditorias
+        ]
+        return Response(data)

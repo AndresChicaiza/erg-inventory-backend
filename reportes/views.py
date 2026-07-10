@@ -115,6 +115,18 @@ class AlertasView(APIView):
         ventas_mes   = facturas_mes.aggregate(t=Sum('total_a_pagar'))['t'] or 0
         num_fact_mes = facturas_mes.count()
 
+        # Histórico de últimos 7 días para gráfico
+        historico_7dias = []
+        for i in range(6, -1, -1):
+            dia_iter = hoy - datetime.timedelta(days=i)
+            tot_dia = Factura.objects.filter(
+                fecha_emision=dia_iter, estado__in=['Emitida', 'Pagada']
+            ).aggregate(t=Sum('total_a_pagar'))['t'] or 0
+            historico_7dias.append({
+                'fecha': dia_iter.strftime('%d/%m'),
+                'ventas': float(tot_dia)
+            })
+
         # ── Stock ───────────────────────────────────────────────
         sin_stock   = Producto.objects.filter(stock=0, estado='Activo')
         stock_bajo  = Producto.objects.filter(stock__gt=0, stock__lte=F('stock_minimo'), estado='Activo')
@@ -163,12 +175,55 @@ class AlertasView(APIView):
             .order_by('stock')[:5]
         )
 
+        # ── Marketplace pendientes ─────────────────────────────────────
+        try:
+            from marketplace.models import PedidoOnline
+            marketplace_pendientes = PedidoOnline.objects.filter(
+                estado__in=['Pendiente', 'En_Revision']
+            ).count()
+        except Exception:
+            marketplace_pendientes = 0
+
+        # ── KPIs Producción ────────────────────────────────────────────
+        try:
+            from produccion.models import OrdenProduccion, ConsumoProduccion
+            ordenes_retrasadas = OrdenProduccion.objects.filter(
+                estado__in=['Pendiente', 'En_Proceso'],
+                creado_en__lt=timezone.now() - datetime.timedelta(days=3)
+            ).count()
+            
+            consumos_recientes = ConsumoProduccion.objects.filter(
+                orden__actualizado_en__gte=timezone.make_aware(datetime.datetime.combine(inicio_mes, datetime.time.min))
+            )
+            total_mermas = 0
+            for c in consumos_recientes:
+                if c.cantidad_real > c.cantidad_esperada:
+                    total_mermas += float(c.cantidad_real - c.cantidad_esperada)
+                    
+            ords_mes = OrdenProduccion.objects.filter(
+                actualizado_en__gte=timezone.make_aware(datetime.datetime.combine(inicio_mes, datetime.time.min))
+            )
+            completadas = ords_mes.filter(estado='Completada').count()
+            total_ords = ords_mes.count()
+            eficiencia = round((completadas / total_ords * 100) if total_ords > 0 else 100, 1)
+
+            produccion_data = {
+                'ordenes_retrasadas': ordenes_retrasadas,
+                'total_mermas': round(total_mermas, 2),
+                'eficiencia': eficiencia
+            }
+        except Exception:
+            produccion_data = {
+                'ordenes_retrasadas': 0, 'total_mermas': 0, 'eficiencia': 100
+            }
+
         return Response({
             'ventas': {
                 'hoy':          float(ventas_hoy),
                 'num_hoy':      num_fact_hoy,
                 'mes':          float(ventas_mes),
                 'num_mes':      num_fact_mes,
+                'historico':    historico_7dias,
             },
             'stock': {
                 'sin_stock':    sin_stock.count(),
@@ -200,6 +255,10 @@ class AlertasView(APIView):
                 'cxp_vencidas':     cxp_vencidas.count(),
                 'cxp_monto':        float(cxp_vencidas_monto),
             },
+            'marketplace': {
+                'pedidos_pendientes': marketplace_pendientes,
+            },
+            'produccion': produccion_data,
         })
 
 

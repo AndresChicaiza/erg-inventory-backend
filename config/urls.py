@@ -52,6 +52,9 @@ urlpatterns = [
 
         # ── Auditoría y Búsqueda ─────────────────────────────────
         path('core/',        include('core.urls')),
+
+        # ── Marketplace B2B ───────────────────────────────────────
+        path('marketplace/', include('marketplace.urls')),
     ])),
 ]
 

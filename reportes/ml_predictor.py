@@ -70,18 +70,37 @@ def predecir_agotamiento_stock(dias_historial=90):
         else:
             dias_restantes = int(stock_actual / consumo_diario_estimado)
 
-        producto_nombre = Producto.objects.get(id=pid).nombre
+        prod = Producto.objects.get(id=pid)
+        producto_nombre = prod.nombre
+        codigo = prod.codigo
+
+        # Calcular campos extra requeridos por el frontend
+        riesgo = 'Bajo'
+        if dias_restantes <= 5:
+            riesgo = 'Alto'
+        elif dias_restantes <= 15:
+            riesgo = 'Medio'
+            
+        punto_reorden = consumo_diario_estimado * 10
+        cantidad_sugerida = 0.0
+        if stock_actual <= punto_reorden or stock_actual <= float(prod.stock_minimo or 0):
+            cantidad_sugerida = max(0.0, (consumo_diario_estimado * 30.0) - stock_actual)
+            cantidad_sugerida = round(cantidad_sugerida)
 
         resultados.append({
             'producto_id': pid,
-            'producto_nombre': producto_nombre,
-            'stock_actual': stock_actual,
-            'consumo_diario_estimado': round(consumo_diario_estimado, 2),
-            'dias_para_agotarse': dias_restantes,
-            'fecha_estimada_agotamiento': (timezone.now().date() + timedelta(days=dias_restantes)).isoformat()
+            'codigo': codigo,
+            'nombre': producto_nombre,
+            'stock': stock_actual,
+            'ventas_30_dias': df_prod['total_salida'].sum() if len(df_prod) > 0 else 0,
+            'velocidad_diaria': round(consumo_diario_estimado, 3),
+            'dias_restantes': dias_restantes,
+            'fecha_agotamiento': (timezone.now().date() + timedelta(days=dias_restantes)).isoformat(),
+            'riesgo': riesgo,
+            'cantidad_sugerida_reabastecer': cantidad_sugerida,
         })
 
     # Ordenar por los que se agotan más rápido
-    resultados = sorted(resultados, key=lambda x: x['dias_para_agotarse'])
+    resultados = sorted(resultados, key=lambda x: x['dias_restantes'])
     
     return resultados

@@ -85,6 +85,7 @@ class RecibirCompraView(APIView):
                 lote=lote_obj,
                 tipo='Entrada',
                 cantidad=cantidad,
+                valor_unitario=detalle.precio_unitario,
                 referencia=f"OC-{compra.id:04d}",
                 observacion=f"Recepción de compra {compra.proveedor.razon_social}",
                 creado_por=request.user

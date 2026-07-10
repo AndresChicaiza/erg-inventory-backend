@@ -158,7 +158,7 @@ class GlobalSearchView(views.APIView):
 
 
 from .ia_chatbot import responder_consulta_ia
-from .ia_prediccion import calcular_predicciones_demanda
+from reportes.ml_predictor import predecir_agotamiento_stock
 
 class IAChatView(views.APIView):
     """POST /api/core/ia/chat/"""
@@ -178,5 +178,8 @@ class IAPrediccionesView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        data = calcular_predicciones_demanda()
-        return Response(data)
+        try:
+            data = predecir_agotamiento_stock()
+            return Response(data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)

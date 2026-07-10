@@ -80,8 +80,9 @@ class Producto(models.Model):
                      )
 
     # ── Stock ────────────────────────────────────────────────────
-    stock          = models.IntegerField(default=0)
-    stock_minimo   = models.IntegerField(default=5)
+    # DecimalField permite unidades fraccionarias (KG, LT, MT, etc.)
+    stock          = models.DecimalField(max_digits=14, decimal_places=3, default=0)
+    stock_minimo   = models.DecimalField(max_digits=14, decimal_places=3, default=5)
 
     # ── Estado ───────────────────────────────────────────────────
     estado         = models.CharField(
@@ -144,7 +145,7 @@ class Lote(models.Model):
     producto          = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='lotes')
     numero_lote       = models.CharField(max_length=100)
     fecha_vencimiento = models.DateField()
-    stock_disponible  = models.IntegerField(default=0)
+    stock_disponible  = models.DecimalField(max_digits=14, decimal_places=3, default=0)
     estado            = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='Vigente')
     creado_en         = models.DateTimeField(auto_now_add=True)
     actualizado_en    = models.DateTimeField(auto_now=True)
@@ -156,3 +157,20 @@ class Lote(models.Model):
 
     def __str__(self):
         return f'{self.numero_lote} (Vence: {self.fecha_vencimiento})'
+
+
+class AuditoriaProducto(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='auditorias')
+    usuario = models.ForeignKey('users.Usuario', on_delete=models.SET_NULL, null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    campo_modificado = models.CharField(max_length=50)
+    valor_anterior = models.CharField(max_length=100)
+    valor_nuevo = models.CharField(max_length=100)
+    motivo = models.CharField(max_length=255, blank=True, default="Modificado desde panel administrativo")
+
+    class Meta:
+        db_table = 'auditoria_producto'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f'{self.producto.codigo} - {self.campo_modificado}'
